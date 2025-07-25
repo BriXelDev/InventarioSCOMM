@@ -1,0 +1,282 @@
+/* Quick Stock Adjustment Page Styles */
+
+.stock-adjustment-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.stock-adjustment-title {
+    color: #2c3e50;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Product Info Section */
+.product-info {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    border-left: 4px solid #3498db;
+}
+
+.product-info h3 {
+    color: #2c3e50;
+    margin: 0 0 1rem 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.product-info p {
+    margin: 0.5rem 0;
+    color: #34495e;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.product-info p strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.current-stock {
+    font-size: 1.1rem;
+    color: #27ae60;
+    font-weight: 700;
+}
+
+/* Adjustment Form */
+.adjustment-form-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
+}
+
+.adjustment-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.adjustment-form .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #34495e;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.adjustment-form .form-group input,
+.adjustment-form .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.adjustment-form .form-group input:focus,
+.adjustment-form .form-group select:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.adjustment-form .form-group select {
+    background-color: white;
+    cursor: pointer;
+}
+
+.adjustment-form .form-group input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.adjustment-form .form-group input[type="number"]::-webkit-outer-spin-button,
+.adjustment-form .form-group input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.adjustment-form .form-group input::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+/* Form Actions */
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.adjustment-btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    display: inline-block;
+}
+
+.adjustment-btn:hover {
+    background: linear-gradient(135deg, #229954, #27ae60);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.adjustment-btn:active {
+    transform: translateY(0);
+}
+
+.cancel-btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    display: inline-block;
+}
+
+.cancel-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+.cancel-btn:active {
+    transform: translateY(0);
+}
+
+/* Information Section */
+.info-section {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #e3f2fd;
+    border-radius: 4px;
+    border-left: 4px solid #2196f3;
+}
+
+.info-section h4 {
+    color: #1976d2;
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-section ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.5rem;
+    color: #1565c0;
+}
+
+.info-section li {
+    margin: 0.5rem 0;
+    line-height: 1.4;
+}
+
+.info-section li strong {
+    color: #0d47a1;
+    font-weight: 600;
+}
+
+/* Visual States */
+.quantity-input-add {
+    border-color: #27ae60 !important;
+}
+
+.quantity-input-subtract {
+    border-color: #e74c3c !important;
+}
+
+.quantity-input-add:focus {
+    box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1) !important;
+}
+
+.quantity-input-subtract:focus {
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1) !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .stock-adjustment-container {
+        margin: 0 1rem;
+        max-width: none;
+    }
+    
+    .stock-adjustment-title {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .product-info {
+        padding: 1rem;
+    }
+    
+    .product-info h3 {
+        font-size: 1.2rem;
+    }
+    
+    .adjustment-form-container {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .adjustment-btn,
+    .cancel-btn {
+        width: 100%;
+    }
+    
+    .info-section {
+        padding: 0.75rem;
+    }
+    
+    .info-section h4 {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stock-adjustment-title {
+        font-size: 1.3rem;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .product-info p {
+        font-size: 0.9rem;
+    }
+    
+    .adjustment-form .form-group input,
+    .adjustment-form .form-group select {
+        padding: 0.6rem;
+        font-size: 0.95rem;
+    }
+}

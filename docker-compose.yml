@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  # Servicio de la aplicación web
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=your_secure_key_here
+      - DB_TYPE=sqlite  # Opciones: sqlite, postgresql, mysql
+      
+    depends_on:
+      - db  # Solo necesario si usas PostgreSQL o MySQL
+    restart: unless-stopped
+
+  # Base de datos PostgreSQL (opcional, comentado por defecto)
+  db:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=inventory_user
+      - POSTGRES_PASSWORD=secure_password
+      - POSTGRES_DB=inventory_db
+    restart: unless-stopped
+    # Comentar o descomentar esta sección según sea necesario
+
+  # Alternativa: Base de datos MySQL (opcional, comentado por defecto)
+  # db:
+  #   image: mysql:8
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   environment:
+  #     - MYSQL_ROOT_PASSWORD=secure_password
+  #     - MYSQL_DATABASE=inventory_db
+  #     - MYSQL_USER=inventory_user
+  #     - MYSQL_PASSWORD=secure_password
+  #   restart: unless-stopped
+
+# Volúmenes persistentes para las bases de datos
+volumes:
+  postgres_data:
+  # mysql_data:

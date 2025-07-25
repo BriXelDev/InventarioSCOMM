@@ -1,0 +1,232 @@
+<!-- PLANTILLA JINJA2 PARA AGREGAR PRODUCTOS
+
+¿Qué es Jinja2?
+Jinja2 es el motor de plantillas de Flask que permite mezclar HTML estático 
+con datos dinámicos de Python. Es similar a otros motores como Handlebars o Blade.
+
+Sintaxis básica de Jinja2:
+- {{ variable }} : Imprime el valor de una variable
+- % comando % : Ejecuta comandos (if, for, extends, etc.)
+- {# comentario #} : Comentarios que no aparecen en el HTML final
+
+HERENCIA DE PLANTILLAS:
+Esta plantilla "hereda" de layout.html, que contiene la estructura común
+(header, navigation, footer). Solo definimos el contenido específico. -->
+
+
+{% extends "layout.html" %}
+<!-- extends: Hereda de la plantilla base layout.html
+Esto significa que add_product.html "rellena" los bloques definidos en layout.html -->
+
+
+{% block title %}Agregar Producto - Sistema de Inventario{% endblock %}
+<!-- BLOQUE TITLE:
+Define el título que aparecerá en la pestaña del navegador.
+En layout.html hay un elemento title con un bloque que se rellena aquí.
+Este bloque "rellena" ese espacio con nuestro título específico. -->
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_product.css') }}">
+{% endblock %}
+
+<!-- BLOQUE HEAD:
+Permite agregar contenido adicional al <head> del documento.
+Aquí incluimos CSS específico para esta página.
+
+url_for() es una función de Flask/Jinja2 que:
+- Genera URLs de forma segura
+- 'static' se refiere al endpoint para archivos estáticos
+- filename= especifica el archivo dentro de la carpeta static/
+- Resultado: /static/css/add_product.css
+
+¿Por qué usar url_for en lugar de escribir la ruta directamente?
+✅ Si cambias la estructura de carpetas, las URLs se actualizan automáticamente
+✅ Funciona correctamente con subdirectorios o dominios
+✅ Flask puede optimizar la carga de archivos estáticos -->
+
+
+{% block content %}
+
+<!-- BLOQUE CONTENT:
+Este es el contenido principal de la página que se insertará en layout.html
+donde está definido el bloque content correspondiente.
+
+Todo el HTML aquí será el contenido específico de la página "Agregar Producto" -->
+
+
+<div class="add-product-container">
+    <!-- CONTENEDOR PRINCIPAL:
+    Las clases CSS (como add-product-container) están definidas en add_product.css
+    y permiten aplicar estilos específicos a esta página -->
+    
+    <h2>Agregar Nuevo Producto</h2>
+     <!-- Título principal de la página  -->
+    
+    <div class="add-product-form">
+         <!-- Contenedor para el formulario con estilos específicos  -->
+        
+        <form method="POST">
+        
+       <!--  FORMULARIO HTML:
+        - method="POST": Los datos se envían de forma segura (no visible en URL)
+        - action no especificada: Se envía a la misma URL (ruta add_product en Flask)
+        - Flask procesará este formulario en la función add_product() cuando sea POST -->
+        
+            <div class="form-grid">
+            
+            <!-- GRID DE FORMULARIO:
+            CSS Grid Layout para organizar los campos en columnas.
+            La clase form-grid está definida en add_product.css y crea 
+            una cuadrícula responsive que se adapta al tamaño de pantalla. -->
+            
+            
+                <div class="form-group">
+                    <!-- Grupo de campo: label + input + ayuda opcional  -->
+                    <label for="name">Nombre del Producto:</label>
+                    <!-- LABEL:
+                    - for="name" conecta la etiqueta con el input id="name"
+                    - Mejora accesibilidad: click en label = focus en input
+                    - Importante para lectores de pantalla -->
+                    
+                    <input type="text" id="name" name="name" required>
+                    <!-- INPUT DE TEXTO:
+                    - type="text": Campo de texto simple
+                    - id="name": Identificador único para CSS/JavaScript
+                    - name="name": Nombre que Flask recibirá en request.form['name']
+                    - required: Validación HTML5 - campo obligatorio -->
+                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="sku">SKU (Código):</label>
+                    <div class="sku-input-group">
+                    <!-- GRUPO DE INPUT PERSONALIZADO:
+                    Combina un input de texto con un botón para generar SKU automático.
+                    La clase sku-input-group permite estilar el conjunto como una unidad. -->
+                    
+                        <input type="text" id="sku" name="sku" placeholder="Ej: PROD-001" class="sku-input">
+                        <!-- INPUT SKU:
+                        - placeholder: Texto de ejemplo que se muestra cuando está vacío
+                        - class="sku-input": Clase CSS específica para este input
+                        - Sin required: Campo opcional según la lógica de negocio -->
+                        
+                        <button type="button" onclick="generateSKU()" class="btn generate-btn">🎲 Generar</button>
+                        <!-- BOTÓN GENERAR SKU:
+                        - type="button": No envía el formulario, solo ejecuta JavaScript
+                        - onclick="generateSKU()": Función JavaScript definida en add_product.js
+                        - 🎲 emoji: Icono visual para indicar "generar aleatoriamente"
+                        - class="btn generate-btn": Estilos CSS para el botón -->
+                        
+                    </div>
+                    <small class="sku-help-text">Opcional - Se puede dejar vacío</small>
+                    <!-- TEXTO DE AYUDA:
+                    - <small>: Elemento semántico para texto secundario/ayuda
+                    - Explica al usuario que el campo es opcional
+                    - La clase sku-help-text permite estilizar este texto específicamente -->
+                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="category">Categoría:</label>
+                    <input type="text" id="category" name="category" placeholder="Ej: Electrónicos">
+                    <!-- CAMPO CATEGORÍA:
+                    - Campo de texto libre para categoría del producto
+                    - placeholder: Ejemplo para guiar al usuario
+                    - Sin required: Opcional según reglas de negocio -->
+                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantity">Cantidad:</label>
+                    <input type="number" id="quantity" name="quantity" value="0" min="0">
+                    <!-- INPUT NUMÉRICO:
+                    - type="number": HTML5 - solo acepta números
+                    - value="0": Valor por defecto
+                    - min="0": No permite números negativos
+                    - El navegador mostrará controles +/- automáticamente -->
+                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="price">Precio ($):</label>
+                    <input type="number" id="price" name="price" step="0.01" value="0.00" min="0">
+                    <!-- INPUT PARA PRECIO:
+                    - type="number": Solo números
+                    - step="0.01": Permite decimales de centavos (2 decimales)
+                    - value="0.00": Valor inicial con formato de precio
+                    - min="0": No permite precios negativos -->
+                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="provider">Proveedor:</label>
+                    <input type="text" id="provider" name="provider" placeholder="Nombre del proveedor">
+                    <!-- Campo de texto para nombre del proveedor  -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="stock_min">Stock Mínimo:</label>
+                    <input type="number" id="stock_min" name="stock_min" value="0" min="0">
+                    <!-- STOCK MÍNIMO:
+                    - Cantidad mínima antes de considerar "stock bajo"
+                    - Se usa en alertas y reportes del sistema
+                    - type="number" con min="0" para evitar valores negativos -->
+                    
+                </div>
+            </div>
+            <!-- Cierre del form-grid  -->
+            
+            <div class="form-actions">
+            <!-- ACCIONES DEL FORMULARIO:
+            Contenedor para botones de acción (guardar, cancelar).
+            La clase form-actions permite estilar este grupo de botones
+            de manera consistente (alineación, espaciado, etc.) -->
+            
+                <button type="submit" class="btn btn-success">Guardar Producto</button>
+                <!-- BOTÓN ENVIAR:
+                - type="submit": Envía el formulario cuando se hace clic
+                - class="btn btn-success": Clases CSS para estilo de botón exitoso
+                - Al hacer clic, se ejecuta POST a la misma URL
+                - Flask procesará en add_product() con request.method == "POST" -->
+            
+                
+                <a href="{{ url_for('home') }}" class="btn">Cancelar</a>
+                <!-- BOTÓN CANCELAR:
+                - <a>: Enlace que parece botón (estilizado con class="btn")
+                - href="{{ url_for('home') }}": URL generada por Flask
+                - url_for('home'): Genera URL para la función home() (página principal)
+                - No envía el formulario, solo navega de vuelta -->
+                
+            </div>
+        </form>
+        <!-- Cierre del formulario  -->
+    </div>
+    <!-- Cierre del contenedor del formulario  -->
+</div>
+<!-- Cierre del contenedor principal  -->
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/add_product.js') }}"></script>
+{% endblock %}
+<!-- BLOQUE SCRIPTS:
+Define JavaScript específico para esta página.
+
+¿Por qué un bloque separado para scripts?
+✅ Organización: Scripts específicos de página van al final
+✅ Rendimiento: Scripts se cargan después del HTML
+✅ Herencia: layout.html puede definir scripts globales, esta página agrega los suyos
+✅ Orden de carga: Scripts de layout.html primero, luego scripts específicos
+
+url_for('static', filename='js/add_product.js'):
+- Genera: /static/js/add_product.js
+- Este archivo contiene la función generateSKU() mencionada en el botón
+- JavaScript específico para funcionalidad de esta página
+
+INTEGRACIÓN CON FLASK:
+1. Usuario llena formulario → 2. Submit (POST) → 3. Flask procesa en add_product() 
+→ 4. Si exitoso: redirect → 5. Si error: vuelve a mostrar formulario -->
+
+
+{% endblock %}
+<!-- Cierre del bloque content  -->
+

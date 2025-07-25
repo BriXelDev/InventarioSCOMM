@@ -1,0 +1,289 @@
+<!-- 
+=============================================================================
+LOGIN.HTML - PÁGINA DE AUTENTICACIÓN
+=============================================================================
+
+DESCRIPCIÓN:
+Template para el formulario de inicio de sesión del sistema.
+Implementa autenticación segura con validación frontend y backend.
+
+CARACTERÍSTICAS CLAVE:
+- Diseño centrado y minimalista
+- Validación HTML5 integrada
+- Integración con sistema de mensajes flash
+- Formulario POST seguro
+- Campos con labels asociados para accesibilidad
+- Botón submit estilizado
+- Template inheritance (extends layout.html)
+- CSS específico para login
+- Responsive design
+
+FLUJO DE FUNCIONAMIENTO:
+1. Usuario ingresa credenciales
+2. Formulario POST envía datos a Flask
+3. Backend valida contra base de datos
+4. Redirección según resultado (dashboard o login con error)
+5. Mensajes flash informan el resultado
+-->
+
+{% extends "layout.html" %}
+
+<!-- 
+HERENCIA DE TEMPLATE:
+Extiende layout.html para aprovechar:
+- Estructura HTML base
+- Sistema de navegación
+- Mensajes flash
+- Estilos base CSS
+- Meta tags SEO
+RESULTADO: Login mantiene consistencia visual con el resto del sistema.
+-->
+
+{% block title %}Iniciar Sesión - Sistema de Inventario{% endblock %}
+
+<!-- 
+BLOQUE TITLE:
+Reemplaza el título por defecto "Sistema de Inventario" del layout.
+Mejora SEO y experiencia de usuario en pestañas del navegador.
+-->
+
+{% block head %}
+<!-- 
+BLOQUE HEAD:
+Agregamos CSS específico para la página de login.
+Los estilos del layout.html se cargan automáticamente.
+
+TÉCNICA:
+    Archivo dedicado para estilos de la página de autenticación.
+    Separación de responsabilidades CSS.
+    Carga condicional solo cuando se necesita.
+
+URL_FOR:
+    Flask busca automáticamente en la carpeta 'static'.
+    Genera ruta correcta independiente del deployment.
+-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- 
+BLOQUE CONTENT:
+Se inserta en el block content del layout.html.
+Aprovecha el contenedor y sistema de mensajes del layout.
+-->
+
+<div class="login-container">
+    <!-- 
+    CONTENEDOR PRINCIPAL:
+    Wrapper para centrar y estilizar el formulario de login.
+    La clase permite CSS específico para posicionamiento.
+    -->
+    
+    <div class="login-form">
+        <!-- 
+        CONTENEDOR FORMULARIO:
+        Agrupa visualmente el formulario de autenticación.
+        -->
+        
+        <h2 class="login-title">Iniciar Sesión</h2>
+        <!-- 
+        TÍTULO DEL FORMULARIO:
+        Elemento visual que identifica la acción.
+        Clase CSS para tipografía consistente con el sistema.
+        -->
+        
+        <form method="POST" class="login-form-element">
+            <!-- 
+            FORMULARIO LOGIN:
+            method="POST": Envía credenciales de forma segura (no en URL).
+            Al no especificar action, envía al mismo endpoint (login).
+            Flask maneja GET (mostrar formulario) y POST (procesar login).
+            
+            CLASE CSS:
+            Permite estilos específicos para el formulario de login.
+            -->
+            
+            <div class="form-group">
+                <!-- 
+                GRUPO CAMPO USUARIO:
+                Contenedor para label + input con espaciado consistente.
+                -->
+                
+                <label for="username">Usuario:</label>
+                <!-- 
+                LABEL USUARIO:
+                'for' conecta con el 'id' del input.
+                Mejora accesibilidad y usabilidad (click en label enfoca input).
+                -->
+                
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    required
+                    class="form-control">
+                <!-- 
+                INPUT USUARIO:
+                type="text": Campo de texto estándar
+                id="username": Identificador único para label y JavaScript
+                name="username": Nombre para procesamiento en Flask
+                required: Validación HTML5 que previene envío vacío
+                class="form-control": Estilo consistente con sistema
+                
+                BACKEND:
+                request.form['username'] recupera el valor ingresado
+                -->
+            </div>
+            
+            <div class="form-group">
+                <!-- 
+                GRUPO CAMPO CONTRASEÑA:
+                Mismo patrón que el campo usuario para consistencia visual.
+                -->
+                
+                <label for="password">Contraseña:</label>
+                <!-- 
+                LABEL CONTRASEÑA:
+                Texto descriptivo asociado al campo de contraseña.
+                -->
+                
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required
+                    class="form-control">
+                <!-- 
+                INPUT CONTRASEÑA:
+                type="password": Oculta caracteres por seguridad
+                required: Validación obligatoria
+                Resto de atributos igual que campo usuario
+                
+                SEGURIDAD:
+                Los caracteres se ocultan visualmente
+                El valor se envía en POST (no visible en URL)
+                Flask recibe en request.form['password']
+                Backend debe validar con hash seguro
+                -->
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-login">
+                Iniciar Sesión
+            </button>
+            <!-- 
+            BOTÓN SUBMIT:
+            type="submit": Envía el formulario al hacer click o Enter
+            Clases CSS para estilo primario del sistema
+            
+            TEXTO:
+            "Iniciar Sesión" claramente indica la acción que realizará.
+            -->
+        </form>
+        <!-- 
+        FIN FORMULARIO:
+        Todo el contenido del form se envía como un único POST request.
+        Flask recibe los datos en request.form['username'] y request.form['password'].
+        -->
+    </div>
+</div>
+<!-- 
+FIN DEL CONTENEDOR LOGIN:
+Cierre del div principal que contiene todo el formulario.
+-->
+{% endblock %}
+
+<!-- 
+=============================================================================
+RESUMEN TÉCNICO - LOGIN.HTML:
+=============================================================================
+
+PROPÓSITO:
+Template minimalista para autenticación de usuarios en el sistema de inventario.
+Implementa un formulario seguro y accesible para el inicio de sesión.
+
+CARACTERÍSTICAS IMPLEMENTADAS:
+
+1. HERENCIA DE TEMPLATE:
+   - Extiende layout.html para mantener consistencia
+   - Personaliza title y head blocks
+   - Aprovecha sistema de mensajes flash del layout
+   - Utiliza guest-header cuando usuario no está autenticado
+
+2. FORMULARIO DE AUTENTICACIÓN:
+   - Método POST para envío seguro de credenciales
+   - Campos requeridos con validación HTML5
+   - Labels asociados para mejor accesibilidad
+   - Estructura semántica con form-groups
+
+3. CAMPOS DE ENTRADA:
+   - Username: Input text con validación required
+   - Password: Input password que oculta caracteres
+   - IDs únicos para JavaScript y labels
+   - Names apropiados para procesamiento Flask
+
+4. VALIDACIÓN Y SEGURIDAD:
+   - Required attributes previenen envío vacío
+   - Type="password" oculta credenciales visualmente
+   - POST method mantiene datos fuera de URL
+   - Integración con mensajes flash para feedback
+
+5. DISEÑO Y USABILIDAD:
+   - CSS específico para centrado y estilizado
+   - Clases consistentes con sistema de diseño
+   - Responsive design heredado del layout
+   - Botón submit accesible por teclado (Enter)
+
+FLUJO DE FUNCIONAMIENTO:
+
+1. RENDERIZADO INICIAL:
+   - GET request muestra formulario vacío
+   - Layout aplica guest-header para no autenticados
+   - CSS centra formulario en viewport
+
+2. ENVÍO DE CREDENCIALES:
+   - Usuario completa campos username/password
+   - Submit button o Enter envía POST request
+   - Flask recibe datos en request.form
+
+3. PROCESAMIENTO BACKEND:
+   - Flask valida credenciales contra base de datos
+   - Crea sesión si login exitoso
+   - Flash message indica resultado de autenticación
+
+4. RESPUESTA POST-LOGIN:
+   - Login exitoso: redirect a dashboard
+   - Login fallido: reload login con mensaje error
+   - Session establecida permite acceso a páginas protegidas
+
+INTEGRACIÓN CON SISTEMA:
+- Utiliza sistema de roles (admin/editor/viewer)
+- Sesión Flask mantiene estado entre requests
+- Mensajes flash informan resultado sin JavaScript
+- Redirección automática post-autenticación
+
+PATRONES JINJA2 UTILIZADOS:
+- Template inheritance (herencia de templates)
+- Block overrides (sobrescritura de bloques title, head, content)
+- url_for() para recursos estáticos
+- Aprovechamiento de funcionalidad del template padre
+
+CONSIDERACIONES DE SEGURIDAD:
+- Contraseñas nunca visibles en frontend
+- POST requests protegen credenciales en tránsito
+- Validación requerida en frontend y backend
+- Session management seguro con Flask
+
+CASOS DE USO:
+- Punto de entrada principal al sistema
+- Validación de identidad de usuarios
+- Establecimiento de sesiones autenticadas
+- Control de acceso a funcionalidades del inventario
+
+DEPENDENCIAS TÉCNICAS:
+- layout.html como template base
+- login.css para estilos específicos
+- Flask session management
+- Sistema de usuarios en base de datos
+- Hash seguro de contraseñas en backend
+=============================================================================
+-->

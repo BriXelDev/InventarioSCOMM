@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<!-- 
+=============================================================================
+LAYOUT.HTML - TEMPLATE BASE DEL SISTEMA
+=============================================================================
+
+PROPÓSITO:
+Template padre que define la estructura común para todas las páginas del sistema.
+Implementa el patrón de herencia de Jinja2 con blocks extensibles.
+
+CARACTERÍSTICAS PRINCIPALES:
+- Navegación dinámica basada en roles de usuario
+- Sistema de mensajes flash para notificaciones
+- Integración de Chart.js para gráficos
+- Responsive design con CSS Grid/Flexbox
+- Manejo de sesiones y autenticación
+- JavaScript compartido entre páginas
+
+PATRONES JINJA2 IMPLEMENTADOS:
+- Template inheritance con bloques de template
+- Condicionales complejas con roles
+- Loops para mensajes flash con categorías
+- Filtros de datos para JavaScript (|tojson)
+- Acceso a variables de sesión de Flask
+=============================================================================
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 
+    TITLE BLOCK EXTENSIBLE:
+    Permite que cada página defina su propio título.
+    Valor por defecto: "Sistema de Inventario"
+    
+    EJEMPLO DE USO EN PÁGINA HIJA:
+    block title: Dashboard - Sistema de Inventario
+    -->
+    <title>{% block title %}Sistema de Inventario{% endblock %}</title>
+    
+    <!-- 
+    CHART.JS - LIBRERÍA DE GRÁFICOS:
+    CDN para generar gráficos interactivos en reportes.
+    Usado en dashboard.html y custom_reports.html
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- 
+    CSS PRINCIPAL:
+    url_for genera URL correcta al archivo CSS.
+    Flask busca en la carpeta 'static' automáticamente.
+    -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    
+    <!-- 
+    HEAD BLOCK EXTENSIBLE:
+    Permite que páginas específicas agreguen CSS o meta tags adicionales.
+    
+    EJEMPLO DE USO:
+    block head:
+    <link rel="stylesheet" href="...específico.css">
+    <meta name="description" content="...">
+    endblock
+    -->
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                {% if session.user_id %}
+                <!-- 
+                NAVEGACIÓN PARA USUARIOS AUTENTICADOS:
+                Solo se muestra si existe session.user_id (usuario logueado).
+                Flask maneja las sesiones automáticamente con cookies seguras.
+                -->
+                <div class="nav-links">
+                    <!-- 
+                    MENÚ PRINCIPAL CON ICONOS:
+                    Cada enlace combina icono emoji + texto descriptivo.
+                    Responsive: en móviles se oculta texto, solo iconos.
+                    -->
+                    <a href="{{ url_for('dashboard') }}">
+                        <span class="menu-icon">📊</span>
+                        <span class="menu-text">Dashboard</span>
+                    </a>
+                    <!-- 
+                    URL_FOR PARA RUTAS DINÁMICAS:
+                    Genera URLs correctas basadas en las rutas de Flask.
+                    Si cambia la ruta en app.py, los enlaces se actualizan automáticamente.
+                    -->
+                    <a href="{{ url_for('home') }}">
+                        <span class="menu-icon">🏠</span>
+                        <span class="menu-text">Inventario</span>
+                    </a>
+                    {% if session.role in ['admin', 'editor'] %}
+                    <!-- 
+                    CONTROL DE ACCESO BASADO EN ROLES:
+                    
+                    ROLES DEL SISTEMA:
+                    - 'admin': Acceso total al sistema
+                    - 'editor': Puede agregar/editar productos
+                    - 'viewer': Solo lectura (no incluido aquí)
+                    
+                    OPERADOR 'IN':
+                    Verifica si el rol del usuario está en la lista.
+                    Más eficiente que múltiples comparaciones OR.
+                    
+                    RESULTADO:
+                    Solo admins y editors ven el botón "Agregar"
+                    -->
+                    <a href="{{ url_for('add_product') }}">
+                        <span class="menu-icon">➕</span>
+                        <span class="menu-text">Agregar</span>
+                    </a>
+                    {% endif %}
+                    <!-- 
+                    ENLACES UNIVERSALES:
+                    Disponibles para todos los usuarios autenticados.
+                    Sin restricciones de rol.
+                    -->
+                    <a href="{{ url_for('inventory_movements') }}">
+                        <span class="menu-icon">📋</span>
+                        <span class="menu-text">Movimientos</span>
+                    </a>
+                    <a href="{{ url_for('reports') }}">
+                        <span class="menu-icon">📊</span>
+                        <span class="menu-text">Reportes</span>
+                    </a>
+                    <a href="{{ url_for('custom_reports') }}">
+                        <span class="menu-icon">📈</span>
+                        <span class="menu-text">Reportes Personalizados</span>
+                    </a>
+                    {% if session.role == 'admin' %}
+                    <!-- 
+                    FUNCIONALIDAD EXCLUSIVA DE ADMIN:
+                    Gestión de usuarios solo para administradores.
+                    Comparación exacta con == (no lista como arriba).
+                    -->
+                    <a href="{{ url_for('manage_users') }}">
+                        <span class="menu-icon">👥</span>
+                        <span class="menu-text">Usuarios</span>
+                    </a>
+                    {% endif %}
+                </div>
+                <!-- INFORMACIÓN DEL USUARIO LOGUEADO -->
+                <div class="user-info">
+                    <!-- 
+                    AVATAR GENERADO DINÁMICAMENTE:
+                    Toma la primera letra del nombre de usuario y la convierte a mayúscula.
+                    
+                    CADENA DE TRANSFORMACIONES:
+                    session.username → primer carácter [0] → .upper()
+                    
+                    EJEMPLO:
+                    "admin" → "a" → "A"
+                    "maria_lopez" → "m" → "M"
+                    -->
+                    <div class="user-avatar">
+                        {{ session.username[0].upper() }}
+                    </div>
+                    
+                    <!-- DETALLES DEL USUARIO ACTUAL -->
+                    <div class="user-details">
+                        <!-- 
+                        NOMBRE DE USUARIO:
+                        Directamente desde la sesión de Flask.
+                        Se establece en el login exitoso.
+                        -->
+                        <span class="user-name">{{ session.username }}</span>
+                        
+                        <!-- 
+                        ROL FORMATEADO:
+                        .title() convierte primera letra a mayúscula.
+                        
+                        TRANSFORMACIONES:
+                        "admin" → "Admin"
+                        "editor" → "Editor"  
+                        "viewer" → "Viewer"
+                        -->
+                        <span class="user-role-text">{{ session.role.title() }}</span>
+                    </div>
+                    
+                    <!-- 
+                    BADGE DE ROL CON CLASES DINÁMICAS:
+                    
+                    CLASES GENERADAS:
+                    - Base: "role-badge"
+                    - Dinámica: "role-" + session.role
+                    
+                    EJEMPLOS RESULTANTES:
+                    - Admin: "role-badge role-admin"
+                    - Editor: "role-badge role-editor"
+                    - Viewer: "role-badge role-viewer"
+                    
+                    CSS puede estilizar cada rol diferente:
+                    .role-admin { background: red; }
+                    .role-editor { background: blue; }
+                    -->
+                    <span class="role-badge role-{{ session.role }}">{{ session.role.title() }}</span>
+                    
+                    <!-- 
+                    ENLACE DE LOGOUT:
+                    url_for('logout') genera ruta hacia función logout en Flask.
+                    Limpia la sesión y redirige al login.
+                    -->
+                    <a href="{{ url_for('logout') }}" class="logout-btn">Cerrar Sesión</a>
+                </div>
+                {% else %}
+                <!-- 
+                ELSE DE AUTENTICACIÓN:
+                Se ejecuta cuando NO existe session.user_id.
+                Usuario no logueado o sesión expirada.
+                -->
+                
+                <!-- HEADER PARA USUARIOS NO LOGUEADOS -->
+                <div class="guest-header">
+                    <!-- 
+                    MODO INVITADO:
+                    Interfaz simplificada para usuarios no autenticados.
+                    Solo muestra información básica del sistema.
+                    -->
+                    <div class="guest-header-content">
+                        <span class="guest-icon">📦</span>
+                        <!-- 
+                        ICONO REPRESENTATIVO:
+                        Emoji de caja/paquete representa inventario.
+                        Visual inmediato del propósito del sistema.
+                        -->
+                        <div>
+                            <h1 class="guest-title">Sistema de Inventario</h1>
+                            <!-- 
+                            TÍTULO PRINCIPAL:
+                            Identifica claramente la aplicación.
+                            Útil para branding y reconocimiento.
+                            -->
+                            <p class="guest-subtitle">Gestión inteligente de productos</p>
+                            <!-- 
+                            DESCRIPCIÓN:
+                            Slogan o descripción breve del sistema.
+                            Comunica valor y propósito al usuario.
+                            -->
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- SISTEMA DE MENSAJES FLASH -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        <!-- 
+        CONTEXTO WITH PARA MENSAJES:
+        
+        GET_FLASHED_MESSAGES():
+        Función de Flask que recupera mensajes temporales de la sesión.
+        Los mensajes se muestran una sola vez y luego se eliminan.
+        
+        PARÁMETRO with_categories=true:
+        Retorna tuplas (categoria, mensaje) en lugar de solo mensajes.
+        Permite estilizar diferentes tipos de notificaciones.
+        
+        VARIABLE LOCAL 'messages':
+        Solo existe dentro del bloque with...endwith.
+        Evita contaminar el contexto global del template.
+        -->
+            {% if messages %}
+            <!-- 
+            VERIFICACIÓN DE EXISTENCIA:
+            Solo renderiza HTML si hay mensajes pendientes.
+            Lista vacía evalúa a False en Jinja2.
+            -->
+                {% for category, message in messages %}
+                <!-- 
+                LOOP DESTRUCTURING:
+                Cada elemento de messages es una tupla (categoria, mensaje).
+                Se descompone automáticamente en variables separadas.
+                
+                CATEGORÍAS TÍPICAS EN FLASK:
+                - "success": Operación exitosa (verde)
+                - "error": Error o fallo (rojo)  
+                - "warning": Advertencia (amarillo)
+                - "info": Información general (azul)
+                -->
+                    <div class="alert alert-{{ category }}">
+                    <!-- 
+                    CLASES CSS DINÁMICAS:
+                    Genera clases como:
+                    - "alert alert-success"
+                    - "alert alert-error"
+                    - "alert alert-warning"
+                    
+                    RESULTADO: Cada tipo tiene diferente color/estilo.
+                    -->
+                        {{ message }}
+                        <!-- 
+                        CONTENIDO DEL MENSAJE:
+                        Texto definido en Flask con flash().
+                        
+                        EJEMPLO EN PYTHON:
+                        flash("Producto agregado exitosamente", "success")
+                        flash("Error al guardar datos", "error")
+                        -->
+                        
+                        <!-- 
+                        BOTÓN DE CIERRE CON JAVASCRIPT:
+                        Permite al usuario cerrar manualmente el mensaje.
+                        onclick ejecuta código JavaScript inline.
+                        
+                        this.parentElement:
+                        Referencia al div.alert que contiene este botón.
+                        style.display='none': Oculta el elemento visualmente.
+                        -->
+                        <button type="button" class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- CONTENIDO PRINCIPAL EXTENSIBLE -->
+        {% block content %}{% endblock %}
+        <!-- 
+        CONTENT BLOCK:
+        Punto de inserción para el contenido específico de cada página.
+        
+        PATRÓN DE HERENCIA:
+        1. layout.html define la estructura común
+        2. Páginas hijas extienden layout.html  
+        3. Páginas hijas definen su contenido en este bloque
+        
+        EJEMPLO DE PÁGINA HIJA:
+        extends "layout.html"
+        block content:
+        <h1>Contenido específico aquí</h1>
+        endblock
+        
+        RESULTADO: Se mantiene header, nav, footer, pero cambia el contenido central.
+        -->
+    </div>
+    
+    <!-- JAVASCRIPT COMPARTIDO -->
+    <script src="{{ url_for('static', filename='js/layout.js') }}"></script>
+    <!-- 
+    SCRIPT BASE:
+    JavaScript común para todas las páginas.
+    Funcionalidades generales como navegación, alerts, etc.
+    -->
+    
+    <script>
+        // PASO DE DATOS DE SESIÓN A JAVASCRIPT
+        // Convierte datos de Flask/Python a formato JavaScript
+        
+        {% if session.user_id %}
+        // USUARIO AUTENTICADO: Transfiere información de sesión al frontend
+        window.sessionData = {
+            // FILTRO tojson: Convierte datos Python a JSON válido para JavaScript
+            // Maneja automáticamente escaping y tipos de datos
+            userId: {{ session.user_id|tojson }},
+            loginTime: {{ session.login_time|tojson }}
+        };
+        {% else %}
+        // USUARIO NO AUTENTICADO: sessionData es null para indicar ausencia de sesión
+        // JavaScript puede verificar: if (window.sessionData) { ... }
+        window.sessionData = null;
+        {% endif %}
+    </script>
+    
+    <!-- SCRIPTS ESPECÍFICOS DE PÁGINA -->
+    {% block scripts %}{% endblock %}
+    <!-- 
+    SCRIPTS BLOCK EXTENSIBLE:
+    Permite que páginas específicas agreguen JavaScript adicional.
+    
+    EJEMPLO DE USO EN PÁGINA HIJA:
+    block scripts:
+    <script src="js/chart-config.js"></script>
+    <script>
+        initializeCharts();
+    </script>
+    endblock
+    
+    ORDEN DE CARGA:
+    1. Chart.js (CDN en <head>)
+    2. layout.js (JavaScript común)  
+    3. Datos de sesión (script inline)
+    4. Scripts específicos de página (este bloque)
+    -->
+</body>
+</html>
+
+<!-- 
+=============================================================================
+RESUMEN TÉCNICO - LAYOUT.HTML:
+=============================================================================
+
+PROPÓSITO:
+Template base que define la estructura común y funcionalidad compartida
+para todas las páginas del sistema de inventario.
+
+CARACTERÍSTICAS IMPLEMENTADAS:
+
+1. SISTEMA DE HERENCIA DE TEMPLATES:
+   - block title: Títulos personalizables por página
+   - block head: CSS y meta tags específicos
+   - block content: Contenido principal de cada página  
+   - block scripts: JavaScript específico por página
+
+2. AUTENTICACIÓN Y ROLES:
+   - Navegación condicional basada en session.user_id
+   - Control de acceso por roles (admin, editor, viewer)
+   - Información de usuario con avatar generado dinámicamente
+   - Sistema seguro de logout
+
+3. SISTEMA DE NAVEGACIÓN:
+   - Enlaces dinámicos con url_for()
+   - Iconos emoji para identificación visual rápida
+   - Responsive design con ocultación progresiva
+   - Preservación de contexto entre páginas
+
+4. MENSAJES FLASH:
+   - Sistema de notificaciones temporales
+   - Categorización (success, error, warning, info)
+   - Cierre manual con JavaScript inline
+   - Persistencia a través de sesión de Flask
+
+5. INTEGRACIÓN FRONTEND-BACKEND:
+   - Paso seguro de datos de sesión a JavaScript
+   - Filtro |tojson para serialización automática
+   - Variables globales accesibles desde cualquier script
+   - Carga ordenada de dependencias
+
+PATRONES JINJA2 AVANZADOS:
+- Template inheritance con múltiples blocks
+- Condicionales de autenticación (session.user_id)
+- Control de acceso por roles (session.role in [...])
+- Manipulación de strings (.upper(), .title())
+- Context managers (with statements)
+- Loops con destructuring (category, message)
+- Filtros de transformación (|tojson)
+
+CASOS DE USO:
+- Base para todas las páginas del sistema
+- Navegación consistente y segura
+- Notificaciones de usuario uniformes
+- Manejo centralizado de autenticación
+- Integración JavaScript-Python
+
+DEPENDENCIAS TÉCNICAS:
+- Flask session management
+- Flask flash messages
+- Chart.js para gráficos
+- CSS Grid/Flexbox responsive
+- JavaScript ES6+ features
+- Sistema de roles personalizado
+
+SEGURIDAD IMPLEMENTADA:
+- Verificación de autenticación en navegación
+- Filtrado automático de datos con |tojson
+- Control granular de acceso por funcionalidad
+- Logout seguro con limpieza de sesión
+- Escape automático de contenido en templates
+=============================================================================
+-->

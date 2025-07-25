@@ -1,0 +1,765 @@
+<!-- 
+=============================================================================
+REPORT.HTML - DASHBOARD COMPLETO DE REPORTES Y ANALYTICS
+=============================================================================
+
+PROPÓSITO:
+Template comprehensivo para visualización de datos de inventario con múltiples
+tipos de reportes, gráficos interactivos, estadísticas clave y alertas de negocio.
+Implementa un dashboard ejecutivo completo para toma de decisiones.
+
+CARACTERÍSTICAS PRINCIPALES:
+- Dashboard con múltiples KPIs de inventario
+- Gráficos interactivos con Chart.js
+- Tablas de datos con alertas visuales
+- Exportación a CSV e impresión
+- Análisis de tendencias temporales
+- Sistema de alertas de stock crítico
+- Resumen financiero completo
+
+PATRONES JINJA2 AVANZADOS:
+- Filtros de formato numérico (%.2f)
+- Condicionales para datos opcionales
+- Loops con estados vacíos
+- Filtros de serialización (|tojson)
+- Cálculos y agregaciones de datos
+- Estados diferenciados por contenido
+
+INTEGRACIÓN FRONTEND:
+- Chart.js para visualizaciones interactivas
+- JavaScript para inicialización de gráficos
+- CSS Grid/Flexbox para layouts responsivos
+- Print styles para reportes físicos
+- Export functionality para datos CSV
+=============================================================================
+-->
+
+{% extends "layout.html" %}
+<!-- 
+HERENCIA DE LAYOUT COMPLETO:
+Aprovecha toda la infraestructura del sistema:
+- Navegación con Chart.js ya cargado en el head
+- Sistema de mensajes flash para feedback
+- CSS base responsive y JavaScript compartido
+- Integración con sistema de autenticación
+-->
+
+{% block title %}Reportes - Sistema de Inventario{% endblock %}
+<!-- 
+TÍTULO ESPECÍFICO PARA ANALYTICS:
+Identifica claramente la sección de reportes y análisis.
+-->
+
+{% block head %}
+    <!-- 
+    CSS ESPECÍFICO PARA REPORTES:
+    Estilos dedicados para:
+    - Grid layouts para múltiples secciones
+    - Estilos de cards para estadísticas
+    - Contenedores de gráficos responsivos
+    - Tablas con estados visuales (alertas)
+    - Print styles para reportes físicos
+    - Colores diferenciados por tipo de alerta
+    -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- CONTENIDO PRINCIPAL DEL DASHBOARD DE REPORTES -->
+
+<div class="reports-header">
+    <!-- 
+    HEADER CON ACCIONES DE REPORTE:
+    Combina título principal con botones de acción para exportar datos.
+    -->
+    <h2 class="reports-title">Reportes del Inventario</h2>
+    <!-- 
+    TÍTULO PRINCIPAL:
+    Identifica claramente la sección de analytics y reportes.
+    -->
+    
+    <div class="reports-actions">
+        <!-- 
+        BOTONES DE ACCIÓN PARA REPORTES:
+        Funcionalidades típicas de dashboards ejecutivos.
+        -->
+        <a href="{{ url_for('export_csv') }}" class="btn export-btn">
+            📊 Exportar CSV
+        </a>
+        <!-- 
+        EXPORTACIÓN A CSV:
+        
+        URL_FOR('export_csv'):
+        Enlace a endpoint que genera archivo CSV con todos los datos.
+        
+        ICONO DESCRIPTIVO:
+        📊 Representa datos/analytics visualmente.
+        
+        CASOS DE USO:
+        - Análisis en Excel/Google Sheets
+        - Backup de datos para auditoría
+        - Integración con sistemas externos
+        -->
+        
+        <button onclick="window.print()" class="btn print-btn">
+            🖨️ Imprimir Reporte
+        </button>
+        <!-- 
+        FUNCIÓN DE IMPRESIÓN:
+        
+        ONCLICK="window.print()":
+        JavaScript nativo que abre dialog de impresión del browser.
+        
+        CSS PRINT STYLES:
+        report.css debe incluir @media print para optimizar layout.
+        
+        VENTAJAS:
+        - No requiere librerías adicionales
+        - Respeta configuración de impresora del usuario
+        - Genera PDF si usuario selecciona "Guardar como PDF"
+        -->
+    </div>
+</div>
+
+<!-- GRID DE ESTADÍSTICAS PRINCIPALES (KPIs) -->
+<div class="stats-grid">
+    <!-- 
+    LAYOUT DE GRID PARA KPIS:
+    Diseño responsive que muestra métricas clave en cards.
+    CSS Grid permite auto-ajuste según espacio disponible.
+    -->
+    
+    <div class="stat-card total-products">
+        <!-- 
+        CARD DE TOTAL DE PRODUCTOS:
+        Primera métrica fundamental del inventario.
+        -->
+        <h3>{{ stats['total_products'] or 0 }}</h3>
+        <!-- 
+        VALOR CON FALLBACK:
+        stats['total_products'] or 0 previene mostrar None.
+        Asegura que siempre se muestre un número válido.
+        -->
+        <p>Total de Productos</p>
+        <!-- 
+        LABEL DESCRIPTIVO:
+        Clarifica qué representa el número mostrado.
+        -->
+    </div>
+    
+    <div class="stat-card total-items">
+        <h3>{{ stats['total_items'] or 0 }}</h3>
+        <!-- 
+        TOTAL DE ARTÍCULOS:
+        Suma de todas las cantidades de todos los productos.
+        Diferente de total_products (tipos únicos vs cantidad total).
+        -->
+        <p>Total de Artículos</p>
+    </div>
+    
+    <div class="stat-card avg-price">
+        <h3>${{ "%.2f"|format(stats['avg_price'] or 0) }}</h3>
+        <!-- 
+        PRECIO PROMEDIO FORMATEADO:
+        
+        FILTRO FORMAT:
+        "%.2f"|format() aplica formato de 2 decimales.
+        
+        EJEMPLO:
+        stats['avg_price'] = 15.6789 → "$15.68"
+        stats['avg_price'] = None → "$0.00"
+        
+        PREFIJO DÓLAR:
+        Indica moneda claramente para contexto financiero.
+        -->
+        <p>Precio Promedio</p>
+    </div>
+    
+    <div class="stat-card low-stock">
+        <h3>{{ low_stock|length }}</h3>
+        <!-- 
+        CONTEO DE PRODUCTOS CON STOCK BAJO:
+        
+        FILTRO |length:
+        Cuenta elementos en la lista low_stock.
+        
+        LÓGICA:
+        low_stock es una lista de productos filtrados por el backend.
+        length da el número total de productos en estado crítico.
+        -->
+        <p>Stock Bajo</p>
+    </div>
+    
+    <div class="stat-card total-value">
+        <h3>${{ "%.2f"|format(stats['total_value'] or 0) }}</h3>
+        <!-- 
+        VALOR TOTAL DEL INVENTARIO:
+        KPI financiero crítico = suma(precio * cantidad) de todos los productos.
+        Mismo formato monetario que precio promedio.
+        -->
+        <p>Valor Total</p>
+    </div>
+    
+    <div class="stat-card no-stock">
+        <h3>{{ no_stock|length }}</h3>
+        <!-- 
+        PRODUCTOS SIN STOCK:
+        Conteo de productos con cantidad = 0.
+        Métrica crítica para reposición de inventario.
+        -->
+        <p>Sin Stock</p>
+    </div>
+</div>
+
+<!-- SECCIÓN DE GRÁFICOS PRINCIPALES -->
+<div class="charts-grid">
+    <!-- 
+    GRID DE GRÁFICOS:
+    Layout responsive para múltiples visualizaciones lado a lado.
+    -->
+    
+    <div class="chart-section">
+        <h3>Productos por Categoría</h3>
+        <!-- 
+        GRÁFICO DE CATEGORÍAS CON CONDICIONAL:
+        Solo se renderiza si hay datos de categorías disponibles.
+        -->
+        {% if categories %}
+        <!-- 
+        VERIFICACIÓN DE DATOS:
+        Previene renderizar canvas vacío si no hay categorías.
+        -->
+        <div class="report-card chart-container">
+            <canvas id="categoryChart"></canvas>
+            <!-- 
+            CANVAS PARA CHART.JS:
+            
+            ID ESPECÍFICO:
+            "categoryChart" será referenciado por JavaScript.
+            
+            INTEGRACIÓN:
+            - Chart.js (cargado en layout.html) renderiza en este canvas
+            - JavaScript usa window.reportData.categories
+            - Típicamente un gráfico de pie o donut
+            -->
+        </div>
+        {% else %}
+        <!-- 
+        ESTADO SIN DATOS:
+        Fallback cuando no hay categorías definidas en el sistema.
+        -->
+        <div class="report-card no-data">
+            <p>No hay categorías definidas</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="chart-section">
+        <h3>Distribución de Stock</h3>
+        <div class="report-card chart-container">
+            <canvas id="stockDistributionChart"></canvas>
+            <!-- 
+            GRÁFICO DE DISTRIBUCIÓN DE STOCK:
+            
+            SIN CONDICIONAL:
+            Este gráfico siempre se muestra porque stock_distribution
+            siempre existe (puede estar vacío pero no None).
+            
+            TIPOS TÍPICOS:
+            - Histograma de rangos de stock
+            - Gráfico de barras por niveles de inventario
+            - Distribución de productos por cantidad disponible
+            -->
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos de tendencias -->
+<div class="trends-section">
+    <h3>📈 Tendencias de Movimientos (Últimos 30 días)</h3>
+    <div class="trends-chart-container">
+        <canvas id="movementTrendsChart"></canvas>
+    </div>
+</div>
+
+<!-- Gráficos lado a lado -->
+<div class="side-charts-grid">
+    <div>
+        <h3>Top 10 Productos Más Valiosos</h3>
+        {% if top_products %}
+        <div class="report-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio</th>
+                        <th>Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in top_products %}
+                    <tr>
+                        <td>{{ product['name'] }}</td>
+                        <td>{{ product['quantity'] }}</td>
+                        <td>${{ "%.2f"|format(product['price']) }}</td>
+                        <td class="total-value-cell">
+                            ${{ "%.2f"|format(product['total_value']) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No hay productos registrados</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h3>Productos Más Movidos</h3>
+        {% if most_moved_products %}
+        <div class="chart-container">
+            <canvas id="mostMovedChart"></canvas>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No hay movimientos registrados</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- SECCIÓN DE ALERTAS CRÍTICAS DE STOCK -->
+<div class="alerts-grid">
+    <!-- 
+    GRID DE ALERTAS:
+    Layout para mostrar lado a lado las alertas más críticas del inventario.
+    -->
+    
+    <div class="alert-section">
+        <h3>🚨 Productos con Stock Bajo</h3>
+        <!-- 
+        ALERTA DE STOCK BAJO CON ICONO:
+        🚨 Emoji de sirena indica urgencia y necesidad de acción.
+        -->
+        {% if low_stock %}
+        <!-- 
+        CONDICIONAL PARA DATOS DE ALERTA:
+        Solo muestra tabla si existen productos con stock bajo.
+        -->
+        <div class="report-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Stock Actual</th>
+                        <th>Stock Mínimo</th>
+                        <th>Proveedor</th>
+                        <!-- 
+                        COLUMNAS CRÍTICAS PARA TOMA DE DECISIONES:
+                        - Producto: Identificación del item
+                        - Stock Actual: Cantidad disponible ahora
+                        - Stock Mínimo: Umbral configurado para reposición
+                        - Proveedor: A quién contactar para restock
+                        -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in low_stock %}
+                    <!-- 
+                    LOOP POR PRODUCTOS EN ESTADO CRÍTICO:
+                    low_stock es lista filtrada por el backend donde:
+                    quantity <= stock_min
+                    -->
+                    <tr class="low-stock">
+                        <!-- 
+                        CLASE CSS PARA ESTADO CRÍTICO:
+                        Permite estilos visuales especiales (rojo, destaque).
+                        -->
+                        <td>{{ product['name'] }}</td>
+                        
+                        <td class="low-stock-quantity">{{ product['quantity'] }}</td>
+                        <!-- 
+                        CANTIDAD CON CLASE ESPECÍFICA:
+                        low-stock-quantity permite destacar el valor crítico.
+                        CSS puede aplicar color rojo, bold, etc.
+                        -->
+                        
+                        <td>{{ product['stock_min'] }}</td>
+                        <!-- 
+                        STOCK MÍNIMO:
+                        Umbral configurado por el usuario para cada producto.
+                        Cuando quantity <= stock_min, aparece en esta lista.
+                        -->
+                        
+                        <td>{{ product['provider'] or 'N/A' }}</td>
+                        <!-- 
+                        PROVEEDOR CON FALLBACK:
+                        Información crucial para reposición.
+                        'N/A' cuando no está definido.
+                        -->
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- 
+        ESTADO POSITIVO SIN ALERTAS:
+        Cuando no hay productos con stock bajo.
+        -->
+        <div class="success-state">
+            <p>
+                ✅ ¡Excelente! No hay productos con stock bajo.
+            </p>
+            <!-- 
+            MENSAJE POSITIVO CON EMOJI:
+            ✅ Checkmark verde comunica estado saludable del inventario.
+            Refuerzo positivo para buen manejo de stock.
+            -->
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="alert-section">
+        <h3>❌ Productos Sin Stock</h3>
+        <!-- 
+        ALERTA CRÍTICA DE STOCK CERO:
+        ❌ Emoji de X roja indica problema severo - productos agotados.
+        -->
+        {% if no_stock %}
+        <!-- 
+        PRODUCTOS COMPLETAMENTE AGOTADOS:
+        Lista de productos donde quantity = 0.
+        -->
+        <div class="report-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Proveedor</th>
+                        <th>Precio</th>
+                        <!-- 
+                        INFORMACIÓN CLAVE PARA REPOSICIÓN:
+                        - Producto: Identificación del item agotado
+                        - Categoría: Tipo de producto para análisis
+                        - Proveedor: Contacto para restock urgente
+                        - Precio: Valor del item para priorización
+                        -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in no_stock %}
+                    <!-- 
+                    LOOP POR PRODUCTOS AGOTADOS:
+                    no_stock filtrado por backend donde quantity = 0.
+                    -->
+                    <tr class="no-stock-row">
+                        <!-- 
+                        CLASE CSS PARA ESTADO CRÍTICO:
+                        no-stock-row permite estilos de alerta máxima.
+                        -->
+                        <td>{{ product['name'] }}</td>
+                        
+                        <td>{{ product['category'] or 'N/A' }}</td>
+                        <!-- 
+                        CATEGORÍA CON FALLBACK:
+                        Permite análisis por tipo de producto agotado.
+                        -->
+                        
+                        <td>{{ product['provider'] or 'N/A' }}</td>
+                        <!-- 
+                        PROVEEDOR CRÍTICO:
+                        Información esencial para reposición de emergencia.
+                        -->
+                        
+                        <td>${{ "%.2f"|format(product['price']) }}</td>
+                        <!-- 
+                        PRECIO FORMATEADO:
+                        Permite priorizar reposición por valor del producto.
+                        Productos más caros pueden requerir atención inmediata.
+                        -->
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- 
+        ESTADO IDEAL SIN AGOTADOS:
+        Todos los productos tienen al menos 1 unidad.
+        -->
+        <div class="success-state">
+            <p>
+                ✅ Todos los productos tienen stock.
+            </p>
+            <!-- 
+            MENSAJE POSITIVO:
+            Estado ideal del inventario sin productos agotados.
+            -->
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Productos recientes -->
+<div class="recent-products-section">
+    <h3>📅 Productos Agregados Recientemente (Últimos 30 días)</h3>
+    {% if recent_products %}
+    <div class="report-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Cantidad</th>
+                    <th>Precio</th>
+                    <th>Fecha de Creación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in recent_products %}
+                <tr>
+                    <td>{{ product['name'] }}</td>
+                    <td>{{ product['category'] or 'N/A' }}</td>
+                    <td>{{ product['quantity'] }}</td>
+                    <td>${{ "%.2f"|format(product['price']) }}</td>
+                    <td>{{ product['created_at'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No se han agregado productos en los últimos 30 días.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Resumen financiero -->
+<div class="financial-summary">
+    <h3>💰 Resumen Financiero</h3>
+    <div class="financial-grid">
+        <div class="financial-item">
+            <strong>Precio Mínimo:</strong> ${{ "%.2f"|format(stats['min_price'] or 0) }}
+        </div>
+        <div class="financial-item">
+            <strong>Precio Máximo:</strong> ${{ "%.2f"|format(stats['max_price'] or 0) }}
+        </div>
+        <div class="financial-item">
+            <strong>Precio Promedio:</strong> ${{ "%.2f"|format(stats['avg_price'] or 0) }}
+        </div>
+        <div class="financial-item">
+            <strong>Valor Total del Inventario:</strong> ${{ "%.2f"|format(stats['total_value'] or 0) }}
+        </div>
+    </div>
+</div>
+
+<!-- INTEGRACIÓN JAVASCRIPT PARA GRÁFICOS -->
+{% block scripts %}
+    <!-- 
+    JAVASCRIPT ESPECIALIZADO PARA REPORTES:
+    report.js contiene funciones para inicializar todos los gráficos.
+    -->
+    <script src="{{ url_for('static', filename='js/report.js') }}"></script>
+    <script>
+        // DATOS DEL REPORTE PARA JAVASCRIPT
+        // Transferencia segura de datos de Flask a frontend
+        
+        window.reportData = {
+            // DATOS CONDICIONALES PARA GRÁFICOS
+            // Solo incluye propiedades si los datos existen
+            
+            {% if categories %}
+            // CATEGORÍAS PARA GRÁFICO DE PIE/DONUT
+            // Solo se incluye si hay categorías definidas en el sistema
+            categories: {{ categories|tojson }},
+            {% endif %}
+            
+            // DISTRIBUCIÓN DE STOCK (SIEMPRE PRESENTE)
+            // Datos para histograma o gráfico de barras de niveles de stock
+            stockDistribution: {{ stock_distribution|tojson }},
+            
+            {% if movement_trends %}
+            // TENDENCIAS DE MOVIMIENTOS (30 DÍAS)
+            // Datos temporales para gráfico de líneas
+            movementTrends: {{ movement_trends|tojson }},
+            {% endif %}
+            
+            {% if most_moved_products %}
+            // PRODUCTOS MÁS MOVIDOS
+            // Top 10 para gráfico de barras horizontales
+            mostMovedProducts: {{ most_moved_products|tojson }}
+            {% endif %}
+        };
+        
+        // INICIALIZACIÓN CUANDO DOM ESTÁ LISTO
+        // Espera a que todos los canvas estén disponibles
+        document.addEventListener('DOMContentLoaded', function() {
+            // VERIFICACIÓN DE FUNCIÓN ANTES DE LLAMAR
+            // Previene errores si report.js no carga correctamente
+            if (typeof window.initializeChartsWithData === 'function') {
+                // LLAMADA CON DATOS PREPARADOS
+                // Pasa todos los datos necesarios para renderizar gráficos
+                window.initializeChartsWithData(window.reportData);
+            }
+        });
+    </script>
+{% endblock %}
+{% endblock %}
+
+<!-- 
+=============================================================================
+RESUMEN TÉCNICO - REPORT.HTML:
+=============================================================================
+
+PROPÓSITO:
+Dashboard ejecutivo completo para análisis y toma de decisiones sobre inventario.
+Implementa múltiples visualizaciones, KPIs críticos, alertas de negocio y 
+capacidades de exportación para reportes comprehensivos.
+
+CARACTERÍSTICAS IMPLEMENTADAS:
+
+1. DASHBOARD DE KPIs EJECUTIVOS:
+   - 6 métricas clave con valores calculados
+   - Grid responsive para múltiples dispositivos
+   - Formato monetario consistente con 2 decimales
+   - Contadores dinámicos con filtros |length
+
+2. SISTEMA DE VISUALIZACIONES AVANZADO:
+   - Gráficos interactivos con Chart.js
+   - Canvas elements para múltiples tipos de charts
+   - Datos condicionales para optimización de rendimiento
+   - Estados fallback para datos inexistentes
+
+3. ALERTAS CRÍTICAS DE NEGOCIO:
+   - Productos con stock bajo (quantity <= stock_min)
+   - Productos sin stock (quantity = 0)
+   - Estados positivos cuando no hay alertas
+   - Información contextual para toma de decisiones
+
+4. CAPACIDADES DE REPORTE:
+   - Exportación CSV para análisis externo
+   - Función de impresión con print styles
+   - Tablas detalladas con información completa
+   - Resumen financiero con estadísticas clave
+
+5. INTEGRACIÓN FRONTEND-BACKEND AVANZADA:
+   - Transferencia selectiva de datos con |tojson
+   - Inicialización segura de JavaScript
+   - Verificación de funciones antes de llamar
+   - Datos estructurados para múltiples gráficos
+
+PATRONES JINJA2 ESPECIALIZADOS:
+
+- FORMATO NUMÉRICO AVANZADO:
+  "%.2f"|format(stats['avg_price'] or 0) (2 decimales con fallback)
+
+- CONTADORES DINÁMICOS:
+  {{ low_stock|length }} (cuenta elementos en listas)
+
+- CONDICIONALES PARA OPTIMIZACIÓN:
+  if categories (solo renderiza si hay datos)
+
+- VALORES POR DEFECTO CONSISTENTES:
+  product['provider'] or 'N/A' (fallbacks descriptivos)
+
+- CLASES CSS DINÁMICAS:
+  class="stat-card total-products" (estilos específicos)
+
+- SERIALIZACIÓN SELECTIVA:
+  categories|tojson (solo si existe)
+
+TIPOS DE VISUALIZACIONES:
+
+1. GRÁFICOS INTERACTIVOS:
+   - categoryChart: Distribución por categorías (pie/donut)
+   - stockDistributionChart: Niveles de inventario (barras)
+   - movementTrendsChart: Tendencias temporales (líneas)
+   - mostMovedChart: Top productos (barras horizontales)
+
+2. TABLAS DE DATOS:
+   - Top 10 productos más valiosos
+   - Productos con stock bajo (alertas)
+   - Productos sin stock (críticos)
+   - Productos agregados recientemente
+
+3. MÉTRICAS CLAVE (KPIs):
+   - Total productos únicos
+   - Total artículos en inventario
+   - Precio promedio del inventario
+   - Valor total del inventario
+   - Conteo de alertas críticas
+
+ALERTAS DE NEGOCIO IMPLEMENTADAS:
+
+- STOCK BAJO (🚨):
+  Productos donde quantity <= stock_min
+  Información: nombre, stock actual, mínimo, proveedor
+
+- SIN STOCK (❌):
+  Productos donde quantity = 0
+  Información: nombre, categoría, proveedor, precio
+
+- ESTADOS POSITIVOS (✅):
+  Mensajes de confirmación cuando no hay alertas
+  Refuerzo positivo para buen manejo
+
+CAPACIDADES DE EXPORTACIÓN:
+
+- EXPORTACIÓN CSV:
+  Enlace a endpoint que genera archivo descargable
+  Datos completos para análisis externo
+
+- IMPRESIÓN:
+  window.print() con estilos optimizados
+  Generación de PDFs desde browser
+
+INTEGRACIÓN JAVASCRIPT:
+
+- DATOS ESTRUCTURADOS:
+  window.reportData con propiedades condicionales
+  Solo incluye datos existentes para optimización
+
+- INICIALIZACIÓN SEGURA:
+  Verificación de funciones antes de ejecutar
+  DOMContentLoaded para timing correcto
+
+- GRÁFICOS DINÁMICOS:
+  Chart.js renderiza basado en datos de Flask
+  Responsive y interactivos
+
+CASOS DE USO EJECUTIVOS:
+- Revisión semanal de KPIs de inventario
+- Identificación de productos para reposición
+- Análisis de tendencias de movimientos
+- Reportes financieros de inventario
+- Alertas tempranas de problemas de stock
+- Decisiones de compras basadas en datos
+
+DEPENDENCIAS TÉCNICAS:
+- layout.html con Chart.js preconfigurado
+- report.css para layouts especializados
+- report.js para inicialización de gráficos
+- Backend con cálculos estadísticos
+- Sistema de alertas automático
+
+CONSIDERACIONES DE RENDIMIENTO:
+- Datos condicionales evitan transferir información innecesaria
+- Canvas elements solo se crean si hay datos
+- Estados fallback previenen errores de renderizado
+- Inicialización diferida hasta que DOM esté listo
+
+EXTENSIBILIDAD:
+- Fácil agregar nuevos KPIs al grid
+- Nuevos tipos de gráficos con canvas adicionales
+- Alertas personalizables por tipo de negocio
+- Filtros temporales para análisis histórico
+- Integración con sistemas BI externos
+=============================================================================
+-->

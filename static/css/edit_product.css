@@ -1,0 +1,25 @@
+/* Estilos específicos para la página de editar producto */
+
+.edit-product-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.edit-product-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+}

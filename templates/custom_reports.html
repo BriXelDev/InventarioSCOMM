@@ -1,0 +1,537 @@
+<!-- 
+PLANTILLA JINJA2 PARA REPORTES PERSONALIZADOS
+
+Este archivo implementa una interfaz compleja para generar reportes dinámicos
+con múltiples tipos de análisis y filtros. Es uno de los templates más avanzados
+del sistema porque:
+
+1. FORMULARIOS DINÁMICOS: Campos que aparecen/desaparecen según selección
+2. RENDERIZADO CONDICIONAL: Diferentes tablas según tipo de reporte  
+3. MANEJO DE ESTADOS VACÍOS: UX mejorada cuando no hay resultados
+4. EXPORTACIÓN: Generación de CSV con mismos filtros
+5. FILTROS COMPLEJOS: Fechas, categorías, proveedores, niveles de stock
+
+TECNOLOGÍAS UTILIZADAS:
+- Jinja2: Herencia, bloques, condicionales, loops
+- JavaScript: Formularios dinámicos y interactividad
+- CSS Grid: Layout responsive para formularios y resultados
+- HTML5: Elementos semánticos y validación
+-->
+
+{% extends "layout.html" %}
+<!-- 
+HERENCIA DE PLANTILLAS:
+Hereda de layout.html que contiene la estructura base (header, nav, footer)
+Este template solo define el contenido específico de reportes personalizados
+-->
+
+{% block title %}Reportes Personalizados - Sistema de Inventario{% endblock %}
+<!-- Título que aparecerá en la pestaña del navegador -->
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/custom_reports.css') }}">
+{% endblock %}
+<!-- 
+BLOQUE HEAD - CSS ESPECÍFICO:
+Incluye estilos específicos para esta página. url_for() genera la ruta segura.
+Los estilos incluyen:
+- Grid layouts para formularios complejos
+- Estilos para tablas de resultados dinámicas
+- Estados de filtros y mensajes de no-resultados
+- Responsive design para diferentes tipos de reportes
+-->
+
+{% block content %}
+<!-- INICIO DEL CONTENIDO PRINCIPAL -->
+
+<div class="page-header">
+    <!-- 
+    ENCABEZADO DE PÁGINA:
+    Header visual con título e introducción. Los emojis mejoran la UX
+    y hacen la interfaz más amigable visualmente.
+    -->
+    <h1>📈 Reportes Personalizados</h1>
+    <p>Genera reportes específicos según tus necesidades</p>
+</div>
+
+<div class="report-container">
+    <!-- CONTENEDOR PRINCIPAL que organiza formulario y resultados -->
+    
+    <div class="report-form-section">
+        <!-- SECCIÓN DEL FORMULARIO DE CONFIGURACIÓN -->
+        <h2>Generar Reporte</h2>
+        
+        <form method="POST" action="{{ url_for('generate_custom_report') }}" class="report-form">
+        <!-- 
+        FORMULARIO PRINCIPAL:
+        - method="POST": Envío seguro de datos
+        - action="{{ url_for('generate_custom_report') }}": URL dinámica a la función Flask
+        - Los datos se procesarán en generate_custom_report() de app.py
+        -->
+        
+            <div class="form-grid">
+            <!-- Grid CSS para organizar campos de forma responsive -->
+            
+                <div class="form-group">
+                    <label for="report_type">Tipo de Reporte:</label>
+                    <select id="report_type" name="report_type" required onchange="updateFormFields()">
+                    <!-- 
+                    SELECT PRINCIPAL que controla todo el formulario:
+                    - required: Campo obligatorio (validación HTML5)
+                    - onchange="updateFormFields()": JavaScript que muestra/oculta campos
+                    - La función está definida en custom_reports.js
+                    -->
+                        <option value="">Selecciona un tipo</option>
+                        
+                        <option value="inventory_general" {% if report_type == 'inventory_general' %}selected{% endif %}>Inventario General</option>
+                        <!-- 
+                        JINJA2 CONDICIONAL:
+                        {% if report_type == 'inventory_general' %}selected{% endif %}
+                        
+                        Esto mantiene la selección del usuario después de enviar el formulario.
+                        Si el usuario seleccionó este tipo y hay error o resultados,
+                        el campo permanece seleccionado para facilitar ajustes.
+                        -->
+                        
+                        <option value="inventory_by_category" {% if report_type == 'inventory_by_category' %}selected{% endif %}>Inventario por Categoría</option>
+                        <option value="low_stock" {% if report_type == 'low_stock' %}selected{% endif %}>Productos con Stock Bajo</option>
+                        <option value="movements_by_period" {% if report_type == 'movements_by_period' %}selected{% endif %}>Movimientos por Período</option>
+                        <option value="value_by_provider" {% if report_type == 'value_by_provider' %}selected{% endif %}>Valor por Proveedor</option>
+                    </select>
+                </div>
+                
+                <div class="form-group date-fields" style="display: none;">
+                    <!-- 
+                    CAMPOS DE FECHA CONDICIONALES:
+                    - class="date-fields": Permite mostrar/ocultar con JavaScript
+                    - style="display: none;": Ocultos por defecto
+                    - Solo se muestran para reportes que los necesiten (movimientos por período)
+                    -->
+                    <label for="date_from">Fecha Desde:</label>
+                    <input type="date" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
+                    <!-- 
+                    INPUT TYPE="DATE":
+                    - HTML5: Muestra calendario automáticamente
+                    - value="{{ filters.date_from or '' }}": Mantiene valor después de submit
+                    - Jinja2 OR operator: Si filters.date_from existe, lo usa; sino, string vacío
+                    -->
+                </div>
+                
+                <div class="form-group date-fields" style="display: none;">
+                    <label for="date_to">Fecha Hasta:</label>
+                    <input type="date" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="category">Categoría:</label>
+                    <select id="category" name="category">
+                        <option value="">Todas las categorías</option>
+                        {% for cat in categories %}
+                        <!-- 
+                        LOOP JINJA2 PARA OPCIONES DINÁMICAS:
+                        Este for itera sobre la lista enviada desde Flask.
+                        
+                        En app.py, la función custom_reports() ejecuta:
+                        cursor.execute("SELECT DISTINCT category FROM products...")
+                        categories = [row['category'] for row in cursor.fetchall()]
+                        
+                        Esto crea options dinámicamente basadas en datos reales.
+                        -->
+                        <option value="{{ cat }}" {% if filters.category == cat %}selected{% endif %}>{{ cat }}</option>
+                        <!-- 
+                        PRESERVACIÓN DE SELECCIÓN:
+                        {% if filters.category == cat %}selected{% endif %}
+                        Mantiene la categoría seleccionada después del submit del formulario
+                        -->
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="provider">Proveedor:</label>
+                    <select id="provider" name="provider">
+                        <option value="">Todos los proveedores</option>
+                        {% for prov in providers %}
+                        <!-- Similar al loop de categorías, pero para proveedores -->
+                        <option value="{{ prov }}" {% if filters.provider == prov %}selected{% endif %}>{{ prov }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group stock-fields" style="display: none;">
+                    <!-- 
+                    CAMPO DE NIVEL DE STOCK CONDICIONAL:
+                    Solo se muestra para reportes de inventario general
+                    Permite filtrar por stock bajo, alto, o cualquier nivel
+                    -->
+                    <label for="stock_level">Nivel de Stock:</label>
+                    <select id="stock_level" name="stock_level">
+                        <option value="">Cualquier nivel</option>
+                        <option value="low" {% if filters.stock_level == 'low' %}selected{% endif %}>Stock Bajo</option>
+                        <option value="high" {% if filters.stock_level == 'high' %}selected{% endif %}>Stock Alto</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Fin del form-grid -->
+            
+            <div class="form-actions">
+                <!-- Contenedor para botones de acción del formulario -->
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-icon">📊</span>
+                    Generar Reporte
+                </button>
+                <!-- 
+                BOTÓN SUBMIT:
+                - type="submit": Envía el formulario al endpoint generate_custom_report
+                - Emoji 📊 para mejorar UX visual
+                - class="btn btn-primary": Estilos CSS del botón principal
+                -->
+            </div>
+        </form>
+    </div>
+    
+    {% if report_type and not results %}
+    <!-- 
+    CONDICIONAL JINJA2 COMPLEJO - ESTADO SIN RESULTADOS:
+    
+    Esta condición se cumple cuando:
+    1. report_type existe (se ejecutó una búsqueda)
+    2. results no existe o está vacío (no se encontraron datos)
+    
+    Es decir: el usuario envió el formulario pero no hay datos que mostrar.
+    Esto mejora mucho la UX proporcionando feedback específico.
+    -->
+    <div class="report-results-section">
+        <div class="no-results-message">
+            <!-- SECCIÓN DE NO-RESULTADOS con UX mejorada -->
+            <div class="no-results-icon">📊</div>
+            <h3>No se encontraron resultados</h3>
+            <p>No hay datos que coincidan con los parámetros seleccionados para el reporte de <strong>{{ report_type.replace('_', ' ').title() }}</strong>.</p>
+            <!-- 
+            JINJA2 FILTERS ANIDADOS:
+            {{ report_type.replace('_', ' ').title() }}
+            
+            1. report_type.replace('_', ' '): Reemplaza _ con espacios
+            2. .title(): Capitaliza cada palabra
+            Ejemplo: "inventory_by_category" → "Inventory By Category"
+            -->
+            
+            {% if filters.date_from or filters.date_to or filters.category or filters.provider or filters.stock_level %}
+            <!-- 
+            CONDICIONAL PARA MOSTRAR FILTROS APLICADOS:
+            Solo se muestra si al menos uno de los filtros está activo.
+            Usa el operador OR de Jinja2 para verificar múltiples condiciones.
+            -->
+            <div class="applied-filters">
+                <h4>Filtros aplicados:</h4>
+                <div class="filter-tags">
+                    <!-- TAGS VISUALES DE FILTROS APLICADOS -->
+                    {% if filters.date_from %}
+                        <span class="filter-tag">📅 Desde: {{ filters.date_from }}</span>
+                    {% endif %}
+                    {% if filters.date_to %}
+                        <span class="filter-tag">📅 Hasta: {{ filters.date_to }}</span>
+                    {% endif %}
+                    {% if filters.category %}
+                        <span class="filter-tag">🏷️ Categoría: {{ filters.category }}</span>
+                    {% endif %}
+                    {% if filters.provider %}
+                        <span class="filter-tag">🏢 Proveedor: {{ filters.provider }}</span>
+                    {% endif %}
+                    {% if filters.stock_level %}
+                        <span class="filter-tag">📦 Stock: {{ filters.stock_level.title() }}</span>
+                    {% endif %}
+                    <!-- 
+                    MÚLTIPLES CONDICIONALES JINJA2:
+                    Cada filtro se muestra solo si tiene valor.
+                    Los emojis ayudan a identificar visualmente cada tipo de filtro.
+                    -->
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="suggestions">
+                <!-- SUGERENCIAS PARA MEJORAR LA BÚSQUEDA -->
+                <h4>Sugerencias:</h4>
+                <ul>
+                    <li>Verifica que los filtros de fecha sean correctos</li>
+                    <li>Intenta ampliar el rango de fechas</li>
+                    <li>Revisa si la categoría o proveedor seleccionado existe</li>
+                    <li>Prueba con menos filtros para obtener más resultados</li>
+                </ul>
+                <!-- Lista de sugerencias para ayudar al usuario a obtener resultados -->
+            </div>
+            
+            <div class="retry-actions">
+                <!-- BOTONES DE ACCIÓN PARA REINTENTAR -->
+                <button onclick="window.location.reload()" class="btn btn-secondary">
+                    🔄 Intentar de nuevo
+                </button>
+                <!-- 
+                JAVASCRIPT INLINE:
+                window.location.reload() recarga la página completa.
+                Útil para limpiar el formulario y empezar de nuevo.
+                -->
+                
+                <a href="{{ url_for('custom_reports') }}" class="btn btn-primary">
+                    📈 Nuevo reporte
+                </a>
+                <!-- 
+                ENLACE QUE PARECE BOTÓN:
+                Navega a la misma página pero sin parámetros,
+                efectivamente reiniciando la interfaz.
+                -->
+            </div>
+        </div>
+    </div>
+    
+    {% elif results %}
+    <!-- 
+    ELIF - ESTADO CON RESULTADOS:
+    Esta rama se ejecuta cuando SÍ hay resultados para mostrar.
+    elif es parte del if anterior: if no results / elif results / endif
+    -->
+    <div class="report-results-section">
+        <div class="results-header">
+            <!-- HEADER DE RESULTADOS con título y acciones -->
+            <h2>Resultados del Reporte</h2>
+            <div class="export-actions">
+                <form method="POST" action="{{ url_for('export_custom_report') }}" style="display: inline;">
+                <!-- 
+                FORMULARIO DE EXPORTACIÓN:
+                - method="POST": Envío seguro
+                - action="{{ url_for('export_custom_report') }}": Endpoint de exportación
+                - style="display: inline;": Para que el botón aparezca en línea con el título
+                -->
+                
+                    <!-- CAMPOS OCULTOS para mantener filtros en la exportación -->
+                    <input type="hidden" name="report_type" value="{{ report_type }}">
+                    <input type="hidden" name="date_from" value="{{ filters.date_from or '' }}">
+                    <input type="hidden" name="date_to" value="{{ filters.date_to or '' }}">
+                    <input type="hidden" name="category" value="{{ filters.category or '' }}">
+                    <input type="hidden" name="provider" value="{{ filters.provider or '' }}">
+                    <input type="hidden" name="stock_level" value="{{ filters.stock_level or '' }}">
+                    <!-- 
+                    CAMPOS HIDDEN:
+                    Envían exactamente los mismos filtros que se usaron para generar
+                    la tabla visual, garantizando que el CSV tenga los mismos datos.
+                    -->
+                    
+                    <button type="submit" class="btn btn-success">
+                        <span class="btn-icon">💾</span>
+                        Exportar CSV
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="results-summary">
+            <!-- RESUMEN DE RESULTADOS con estadísticas -->
+            <div class="summary-card">
+                <h3>{{ results|length }}</h3>
+                <p>Registros encontrados</p>
+                <!-- 
+                FILTRO JINJA2 |length:
+                Cuenta los elementos en la lista results.
+                Es equivalente a len(results) en Python.
+                -->
+            </div>
+        </div>
+        
+        <div class="results-table">
+            <!-- TABLA DE RESULTADOS PRINCIPAL -->
+            <table>
+                <thead>
+                    <!-- CABECERA DINÁMICA según tipo de reporte -->
+                    <tr>
+                        {% if report_type == 'inventory_by_category' %}
+                        <!-- REPORTE AGRUPADO POR CATEGORÍA -->
+                            <th>Categoría</th>
+                            <th>Total Productos</th>
+                            <th>Total Cantidad</th>
+                            <th>Valor Total</th>
+                        <!-- 
+                        REPORTE AGREGADO:
+                        Este tipo muestra resúmenes por categoría,
+                        no productos individuales.
+                        -->
+                        
+                        {% elif report_type == 'low_stock' %}
+                        <!-- REPORTE DE STOCK BAJO -->
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Cantidad</th>
+                            <th>Stock Mínimo</th>
+                            <th>Proveedor</th>
+                            <th>Déficit</th>
+                        <!-- 
+                        COLUMNAS ESPECÍFICAS:
+                        "Déficit" calcula cuántas unidades faltan
+                        para llegar al stock mínimo.
+                        -->
+                        
+                        {% elif report_type == 'movements_by_period' %}
+                        <!-- REPORTE DE MOVIMIENTOS POR PERÍODO -->
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Tipo</th>
+                            <th>Cantidad</th>
+                            <th>Motivo</th>
+                            <th>Usuario</th>
+                        <!-- 
+                        INFORMACIÓN TEMPORAL:
+                        Enfocado en cambios históricos del inventario,
+                        incluyendo quién hizo qué y cuándo.
+                        -->
+                        
+                        {% elif report_type == 'value_by_provider' %}
+                        <!-- REPORTE DE VALOR POR PROVEEDOR -->
+                            <th>Proveedor</th>
+                            <th>Total Productos</th>
+                            <th>Total Cantidad</th>
+                            <th>Valor Total</th>
+                        <!-- 
+                        REPORTE FINANCIERO:
+                        Agrupa por proveedor para análisis de costos
+                        y relaciones comerciales.
+                        -->
+                        
+                        {% else %}
+                        <!-- REPORTE GENÉRICO (fallback) -->
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Cantidad</th>
+                            <th>Precio</th>
+                            <th>Proveedor</th>
+                            <th>Stock Mínimo</th>
+                            <th>Fecha Creación</th>
+                        <!-- 
+                        ELSE COMO FALLBACK:
+                        Si no coincide con ningún tipo específico,
+                        muestra columnas genéricas de inventario.
+                        -->
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- CUERPO DE LA TABLA con datos dinámicos -->
+                    {% for row in results %}
+                    <!-- 
+                    LOOP FOR EN JINJA2:
+                    Itera sobre cada registro en results.
+                    'row' representa un registro individual.
+                    -->
+                    <tr>
+                        {% if report_type == 'inventory_by_category' %}
+                        <!-- DATOS PARA REPORTE POR CATEGORÍA -->
+                            <td>{{ row.category }}</td>
+                            <td>{{ row.total_products }}</td>
+                            <td>{{ row.total_quantity }}</td>
+                            <td>${{ "%.2f"|format(row.total_value) }}</td>
+                        <!-- 
+                        FORMATEO DE NÚMEROS:
+                        "%.2f"|format() es un filtro que formatea números
+                        con 2 decimales, similar a format() en Python.
+                        -->
+                        
+                        {% elif report_type == 'low_stock' %}
+                        <!-- DATOS PARA REPORTE DE STOCK BAJO -->
+                            <td>{{ row.name }}</td>
+                            <td>{{ row.category }}</td>
+                            <td class="low-stock">{{ row.quantity }}</td>
+                            <!-- 
+                            CLASE CSS ESPECÍFICA:
+                            "low-stock" aplica estilos visuales para
+                            destacar productos con stock bajo.
+                            -->
+                            <td>{{ row.stock_min }}</td>
+                            <td>{{ row.provider }}</td>
+                            <td class="deficit">{{ row.deficit }}</td>
+                            <!-- 
+                            CAMPO CALCULADO:
+                            'deficit' viene pre-calculado desde el backend,
+                            evitando cálculos complejos en el template.
+                            -->
+                        
+                        {% elif report_type == 'movements_by_period' %}
+                        <!-- DATOS PARA REPORTE DE MOVIMIENTOS -->
+                            <td>{{ row.created_at[:10] }}</td>
+                            <!-- 
+                            SLICE DE STRING:
+                            [:10] toma los primeros 10 caracteres de la fecha,
+                            efectivamente mostrando solo YYYY-MM-DD.
+                            -->
+                            <td>{{ row.product_name }}</td>
+                            <td>{{ row.category }}</td>
+                            <td>
+                                <span class="movement-type movement-{{ row.movement_type }}">
+                                    {{ row.movement_type.title() }}
+                                </span>
+                                <!-- 
+                                CLASES CSS DINÁMICAS:
+                                "movement-{{ row.movement_type }}" genera clases como:
+                                - movement-entrada
+                                - movement-salida
+                                .title() capitaliza la primera letra.
+                                -->
+                            </td>
+                            <td>{{ row.quantity }}</td>
+                            <td>{{ row.reason }}</td>
+                            <td>{{ row.username }}</td>
+                        
+                        {% elif report_type == 'value_by_provider' %}
+                        <!-- DATOS PARA REPORTE POR PROVEEDOR -->
+                            <td>{{ row.provider }}</td>
+                            <td>{{ row.total_products }}</td>
+                            <td>{{ row.total_quantity }}</td>
+                            <td>${{ "%.2f"|format(row.total_value) }}</td>
+                        
+                        {% else %}
+                        <!-- DATOS PARA REPORTE GENÉRICO -->
+                            <td>{{ row.name }}</td>
+                            <td>{{ row.category }}</td>
+                            <td>{{ row.quantity }}</td>
+                            <td>${{ "%.2f"|format(row.price) }}</td>
+                            <td>{{ row.provider }}</td>
+                            <td>{{ row.stock_min }}</td>
+                            <td>{{ row.created_at[:10] }}</td>
+                            <!-- 
+                            FORMATO CONSISTENTE:
+                            Mismo slice [:10] para fechas en formato consistente.
+                            -->
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                    <!-- 
+                    ENDFOR:
+                    Marca el final del bucle for.
+                    Cada iteración genera una fila <tr> completa.
+                    -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    <!-- 
+    ENDIF PRINCIPAL:
+    Cierra la estructura condicional que maneja:
+    - Condicional sin resultados después de POST (sin resultados)
+    - Condicional con resultados (con resultados)
+    - (sin else, porque si no hay POST no se muestra nada)
+    -->
+</div>
+
+<!-- CARGA DE JAVASCRIPT ESPECÍFICO -->
+<script src="{{ url_for('static', filename='js/custom_reports.js') }}"></script>
+<!-- 
+URL_FOR PARA ARCHIVOS ESTÁTICOS:
+Genera la URL correcta para archivos en /static/js/
+Flask maneja automáticamente la ruta y versionado.
+-->
+{% endblock %}
+<!-- 
+ENDBLOCK:
+Cierra el bloque 'content' que se definió al inicio.
+Este contenido se insertará en layout.html donde esté el bloque content correspondiente.
+-->

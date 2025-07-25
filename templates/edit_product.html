@@ -1,0 +1,269 @@
+<!-- 
+PLANTILLA JINJA2 PARA EDITAR PRODUCTOS
+
+Este archivo implementa el formulario de edición de productos existentes.
+Se diferencia del formulario de creación (add_product.html) porque:
+
+1. CARGA DATOS EXISTENTES: Los campos vienen pre-poblados con valores actuales
+2. OPERACIONES DESTRUCTIVAS: Incluye opción de eliminar producto
+3. VALIDACIÓN DIFERENTE: Mantiene SKU existente, validaciones específicas
+4. UX DE EDICIÓN: Feedback visual de campos modificados
+5. CONFIRMACIONES: Modales de confirmación para acciones irreversibles
+
+FLUJO DE DATOS:
+Flask Route → Consulta BD → product dict → Jinja2 → HTML pre-poblado
+
+CARACTERÍSTICAS JINJA2 DESTACADAS:
+- Carga de valores en inputs: value="{{ product['field'] }}"
+- URLs con parámetros: url_for('action', product_id=product['id'])
+- JavaScript inline: onclick con confirmaciones
+- Estructura similar a add_product pero con datos existentes
+
+TECNOLOGÍAS UTILIZADAS:
+- Jinja2: Pre-población de formularios, URLs dinámicas
+- HTML5: Validación de formularios, tipos de input específicos
+- JavaScript: Confirmaciones de eliminación, validaciones custom
+- CSS Grid: Layout responsive del formulario
+-->
+
+{% extends "layout.html" %}
+<!-- 
+HERENCIA DE PLANTILLAS:
+Utiliza la misma estructura base que otros formularios.
+La consistencia en herencia facilita mantenimiento y UX.
+-->
+
+{% block title %}Editar Producto - Sistema de Inventario{% endblock %}
+<!-- Título específico que indica que estamos en modo edición -->
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/edit_product.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- INICIO DEL CONTENIDO PRINCIPAL -->
+<div class="edit-product-container">
+    <!-- 
+    CONTENEDOR PRINCIPAL:
+    Clase específica edit-product-container permite estilos
+    únicos para la página de edición vs. la de creación.
+    -->
+    <h2>Editar Producto</h2>
+    <!-- Título que claramente indica el modo de edición -->
+    
+    <div class="edit-product-form">
+        <!-- Contenedor específico para el formulario de edición -->
+        <form method="POST">
+        <!-- 
+        FORMULARIO POST SIN ACTION:
+        - method="POST": Envío seguro para modificaciones
+        - Sin action: Se envía a la misma URL (edit_product con ID)
+        - Flask procesará en la función edit_product() del route correspondiente
+        - URL típica: /edit/123 donde 123 es el product_id
+        -->
+        
+            <div class="form-grid">
+            <!-- Grid CSS para organizar campos en layout responsive -->
+            
+                <div class="form-group">
+                    <label for="name">Nombre del Producto:</label>
+                    <input type="text" id="name" name="name" value="{{ product['name'] }}" required>
+                    <!-- 
+                    INPUT CON VALOR PRE-CARGADO:
+                    value="{{ product['name'] }}" es la clave de la edición.
+                    
+                    FLUJO DE DATOS:
+                    1. Flask consulta BD: SELECT * FROM products WHERE id = ?
+                    2. Convierte Row a dict: product = dict(row)
+                    3. Jinja2 renderiza: value="Nombre del Producto Actual"
+                    4. Usuario ve campo pre-poblado
+                    
+                    DIFERENCIA CON ADD_PRODUCT:
+                    - add_product: value="" (campo vacío)
+                    - edit_product: value="{{ product['name'] }}" (pre-poblado)
+                    -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="category">Categoría:</label>
+                    <input type="text" id="category" name="category" value="{{ product['category'] }}" placeholder="Ej: Electrónicos">
+                    <!-- 
+                    PLACEHOLDER VS VALUE:
+                    - placeholder: Texto de ayuda (se ve cuando field está vacío)
+                    - value: Valor actual del campo (datos existentes)
+                    
+                    En edición, value tiene precedencia sobre placeholder.
+                    Si product['category'] tiene valor, placeholder no se ve.
+                    -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantity">Cantidad:</label>
+                    <input type="number" id="quantity" name="quantity" value="{{ product['quantity'] }}" min="0">
+                    <!-- 
+                    INPUT NUMÉRICO CON VALOR EXISTENTE:
+                    - type="number": Validación HTML5 para números
+                    - value="{{ product['quantity'] }}": Cantidad actual en BD
+                    - min="0": No permite cantidades negativas
+                    
+                    CONSIDERACIONES ESPECIALES:
+                    - Si product['quantity'] es None, se muestra campo vacío
+                    - JavaScript puede validar que nuevo valor >= 0
+                    - Cambios en cantidad pueden requerir logging de movimientos
+                    -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="price">Precio ($):</label>
+                    <input type="number" id="price" name="price" step="0.01" value="{{ product['price'] }}" min="0">
+                    <!-- 
+                    INPUT DE PRECIO CON PRECISIÓN DECIMAL:
+                    - type="number": Validación numérica
+                    - step="0.01": Permite centavos (2 decimales)
+                    - value="{{ product['price'] }}": Precio actual del producto
+                    - min="0": No permite precios negativos
+                    
+                    FORMATEO AUTOMÁTICO:
+                    El navegador puede mostrar el precio con formato local.
+                    Ej: Si product['price'] = 123.50, se muestra "123.50" en el input.
+                    
+                    VALIDACIÓN BACKEND:
+                    Flask debe validar que el precio sea un número válido >= 0.
+                    -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="provider">Proveedor:</label>
+                    <input type="text" id="provider" name="provider" value="{{ product['provider'] }}" placeholder="Nombre del proveedor">
+                    <!-- 
+                    CAMPO DE PROVEEDOR:
+                    - value="{{ product['provider'] }}": Proveedor actual
+                    - placeholder: Se muestra solo si el campo está vacío
+                    
+                    MANEJO DE VALORES NULOS:
+                    Si product['provider'] es None o NULL en la BD:
+                    - Jinja2 renderiza value=""
+                    - Se muestra el placeholder "Nombre del proveedor"
+                    - Usuario puede agregar proveedor si no tenía
+                    -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="stock_min">Stock Mínimo:</label>
+                    <input type="number" id="stock_min" name="stock_min" value="{{ product['stock_min'] }}" min="0">
+                    <!-- 
+                    STOCK MÍNIMO PARA ALERTAS:
+                    - value="{{ product['stock_min'] }}": Valor actual configurado
+                    - min="0": Stock mínimo no puede ser negativo
+                    
+                    LÓGICA DE NEGOCIO:
+                    Este valor se usa en dashboard.html para determinar:
+                    - Productos con stock bajo (quantity < stock_min)
+                    - Productos críticos (quantity = 0)
+                    - Alertas automáticas del sistema
+                    -->
+                </div>
+            </div>
+            <!-- Fin del form-grid -->
+            
+            <div class="form-actions">
+                <!-- 
+                ACCIONES DEL FORMULARIO DE EDICIÓN:
+                Incluye tres acciones principales:
+                1. Actualizar (guardar cambios)
+                2. Cancelar (volver sin guardar)
+                3. Eliminar (acción destructiva)
+                -->
+                
+                <button type="submit" class="btn btn-success">Actualizar Producto</button>
+                <!-- 
+                BOTÓN PRINCIPAL - ACTUALIZAR:
+                - type="submit": Envía el formulario con los datos modificados
+                - class="btn btn-success": Estilo de botón exitoso (verde típicamente)
+                - Texto específico "Actualizar" vs "Guardar" de add_product
+                
+                PROCESAMIENTO EN FLASK:
+                1. Usuario hace clic → POST al endpoint edit_product
+                2. Flask recibe request.form con nuevos valores
+                3. Valida datos y actualiza BD: UPDATE products SET ... WHERE id = ?
+                4. Redirige a página de confirmación o lista de productos
+                -->
+                
+                <a href="{{ url_for('home') }}" class="btn">Cancelar</a>
+                <!-- 
+                BOTÓN SECUNDARIO - CANCELAR:
+                - Enlace que parece botón (class="btn")
+                - url_for('home'): Navega a página principal
+                - No envía formulario, descarta cambios
+                
+                UX CONSIDERATIONS:
+                - Sin confirmación: cambios se pierden silenciosamente
+                - Alternativa: JavaScript para detectar cambios y confirmar
+                - Mejora: Guardar borrador en localStorage
+                -->
+                
+                <a href="{{ url_for('delete_product', product_id=product['id']) }}" 
+                   class="btn btn-danger" 
+                   onclick="return confirm('¿Estás seguro de eliminar este producto?')">
+                    Eliminar
+                </a>
+                <!-- 
+                BOTÓN PELIGROSO - ELIMINAR:
+                
+                URL_FOR CON PARÁMETROS:
+                url_for('delete_product', product_id=product['id'])
+                - Genera URL como: /delete/123
+                - product['id'] es el ID único del producto actual
+                - Flask route: @app.route('/delete/<int:product_id>')
+                
+                CLASE CSS PELIGROSA:
+                class="btn btn-danger"
+                - btn: estilos base de botón
+                - btn-danger: estilos específicos para acciones destructivas
+                - Típicamente rojo para indicar peligro
+                
+                JAVASCRIPT INLINE DE CONFIRMACIÓN:
+                onclick="return confirm('¿Estás seguro...')"
+                
+                CÓMO FUNCIONA:
+                1. Usuario hace clic en "Eliminar"
+                2. confirm() muestra diálogo nativo del navegador
+                3. Si usuario clickea "OK": return true → navegador sigue el enlace
+                4. Si usuario clickea "Cancelar": return false → navegador NO sigue el enlace
+                5. Si sigue: GET /delete/123 → Flask ejecuta delete_product(123)
+                
+                MEJORAS POSIBLES:
+                - Modal personalizado en lugar de confirm() nativo
+                - Confirmación doble (escribir "ELIMINAR")
+                - Soft delete en lugar de DELETE físico
+                - Logging de eliminaciones para auditoría
+                -->
+            </div>
+        </form>
+        <!-- Fin del formulario -->
+    </div>
+    <!-- Fin del contenedor del formulario -->
+</div>
+<!-- Fin del contenedor principal -->
+{% endblock %}
+<!-- 
+ENDBLOCK:
+Cierra el bloque 'content' definido al inicio.
+Este contenido se inserta en layout.html en el área principal.
+
+RESUMEN DEL FLUJO COMPLETO:
+1. Usuario navega a /edit/123
+2. Flask ejecuta edit_product(123)
+3. Consulta BD y obtiene datos del producto
+4. Renderiza este template con product=datos_del_producto
+5. Jinja2 pre-puebla todos los campos con valores actuales
+6. Usuario ve formulario con datos existentes
+7. Usuario modifica campos y hace submit
+8. POST /edit/123 con nuevos datos
+9. Flask valida y actualiza BD
+10. Redirect a página de confirmación
+
+DIFERENCIAS CLAVE CON ADD_PRODUCT:
+- add_product: campos vacíos, action="crear"
+- edit_product: campos pre-poblados, action="actualizar", option="eliminar"
+-->

@@ -1,0 +1,532 @@
+<!-- 
+PLANTILLA JINJA2 PARA HISTORIAL DE MOVIMIENTOS DE INVENTARIO
+
+Este archivo implementa una vista avanzada de auditoria del sistema de inventario.
+Es uno de los templates más complejos porque maneja:
+
+1. PAGINACIÓN COMPLEJA: Sistema de páginas con elipsis inteligentes
+2. FILTROS MÚLTIPLES: Producto, tipo, fechas con preservación de estado
+3. CÁLCULOS MATEMÁTICOS: Rangos de registros, cambios de cantidad
+4. HISTORIAL COMPLETO: Tracking de todas las operaciones del inventario
+5. BADGES DINÁMICOS: Visualización diferenciada por tipo de movimiento
+6. NAVEGACIÓN INTELIGENTE: URLs con múltiples parámetros preservados
+
+CARACTERÍSTICAS JINJA2 AVANZADAS:
+- Loops con rangos matemáticos (range())
+- Condicionales complejas anidadas
+- Cálculos inline para paginación
+- Preservación de múltiples filtros en URLs
+- Operaciones aritméticas en templates
+- Manejo de estados de datos opcionales
+
+CASOS DE USO:
+- Auditoría de cambios en inventario
+- Tracking de quien hizo qué y cuándo
+- Análisis de patrones de movimiento
+- Debugging de discrepancias de stock
+- Reportes históricos para análisis
+
+TECNOLOGÍAS UTILIZADAS:
+- Jinja2: Paginación, filtros, cálculos matemáticos
+- HTML5: Formularios de fecha, elementos semánticos
+- CSS Grid: Layout responsive para filtros y tabla
+- JavaScript potencial: Filtros en tiempo real, exportación
+-->
+
+{% extends "layout.html" %}
+<!-- 
+HERENCIA DE PLANTILLAS:
+Utiliza la estructura base compartida, manteniendo consistencia
+con el resto del sistema de inventario.
+-->
+
+{% block title %}Historial de Movimientos - Sistema de Inventario{% endblock %}
+<!-- Título específico para la página de movimientos -->
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/inventory_movements.css') }}">
+{% endblock %}
+<!-- 
+BLOQUE HEAD - CSS ESPECÍFICO:
+Los estilos de inventory_movements.css incluyen:
+- Layout para sección de filtros complejos
+- Estilos para badges de diferentes tipos de movimiento
+- Paginación responsiva con elipsis
+- Tabla con columnas de diferentes anchos
+- Estados visuales para cambios positivos/negativos
+- Diseño de cards para filtros en móviles
+-->
+
+{% block content %}
+<!-- INICIO DEL CONTENIDO PRINCIPAL -->
+<div class="movements-header">
+    <!-- 
+    HEADER DE MOVIMIENTOS CON CONTADOR:
+    Combina título descriptivo con métricas importantes.
+    El contador total da contexto sobre el volumen de datos.
+    -->
+    <h2>📋 Historial de Movimientos de Inventario</h2>
+    <div class="records-counter">
+        <strong>Total de registros:</strong> {{ total_records }}
+        <!-- 
+        CONTADOR TOTAL DE REGISTROS:
+        total_records viene de Flask con el conteo completo.
+        No se ve afectado por filtros o paginación.
+        
+        CÁLCULO EN BACKEND:
+        SELECT COUNT(*) FROM inventory_movements
+        
+        UTILIDAD:
+        - Proporciona contexto sobre el volumen de operaciones
+        - Ayuda a usuarios a estimar tiempo de búsqueda
+        - Métrica de actividad del sistema
+        -->
+    </div>
+</div>
+
+<!-- SECCIÓN DE FILTROS AVANZADOS -->
+<div class="filters-section">
+    <!-- 
+    FILTROS MÚLTIPLES:
+    Permite a usuarios refinar los resultados por varios criterios.
+    Cada filtro se preserva en la navegación y paginación.
+    -->
+    <h3 class="filters-title">🔍 Filtros</h3>
+    <form method="GET" class="filters-form">
+    <!-- 
+    FORMULARIO GET PARA FILTROS:
+    - method="GET": Parámetros visibles en URL
+    - Permite marcadores/compartir enlaces filtrados
+    - Navegación del navegador funciona correctamente
+    - SEO friendly para búsquedas específicas
+    -->
+        <div>
+            <label for="product">Producto:</label>
+            <input type="text" id="product" name="product" value="{{ product_filter or '' }}" 
+                   placeholder="Buscar por producto..." class="filter-input">
+            <!-- 
+            FILTRO DE PRODUCTO CON PRESERVACIÓN:
+            value="{{ product_filter or '' }}"
+            
+            FUNCIONAMIENTO:
+            1. Usuario escribe "Laptop Dell" y filtra
+            2. URL: ?product=Laptop+Dell&movement_type=entrada
+            3. Flask: product_filter = request.args.get('product')
+            4. Template: value="Laptop Dell" (campo permanece lleno)
+            5. Usuario puede refinar búsqueda sin perder contexto
+            -->
+        </div>
+        
+        <div>
+            <label for="movement_type">Tipo de Movimiento:</label>
+            <select id="movement_type" name="movement_type" class="filter-input">
+                <option value="">Todos los tipos</option>
+                <option value="entrada" {% if movement_type_filter == 'entrada' %}selected{% endif %}>Entrada</option>
+                <option value="salida" {% if movement_type_filter == 'salida' %}selected{% endif %}>Salida</option>
+                <option value="ajuste" {% if movement_type_filter == 'ajuste' %}selected{% endif %}>Ajuste</option>
+                <option value="creacion" {% if movement_type_filter == 'creacion' %}selected{% endif %}>Creación</option>
+                <option value="eliminacion" {% if movement_type_filter == 'eliminacion' %}selected{% endif %}>Eliminación</option>
+            </select>
+            <!-- 
+            SELECT CON OPCIONES MÚLTIPLES Y PRESERVACIÓN:
+            
+            OPCIONES DEL SISTEMA:
+            - "entrada": Incremento de stock (compras, devoluciones)
+            - "salida": Reducción de stock (ventas, consumo)  
+            - "ajuste": Correcciones manuales de inventario
+            - "creacion": Producto nuevo agregado al sistema
+            - "eliminacion": Producto removido del sistema
+            
+            PRESERVACIÓN DE SELECCIÓN:
+            {% if movement_type_filter == 'entrada' %}selected{% endif %}
+            Cada option verifica si coincide con el filtro actual.
+            Solo la opción correcta tendrá el atributo "selected".
+            -->
+        </div>
+        
+        <div>
+            <label for="date_from">Fecha desde:</label>
+            <input type="date" id="date_from" name="date_from" value="{{ date_from or '' }}" class="filter-input">
+            <!-- 
+            INPUT DE FECHA HTML5:
+            - type="date": Navegador muestra selector de fecha nativo
+            - value="{{ date_from or '' }}": Preserva fecha seleccionada
+            - Formato estándar: YYYY-MM-DD
+            
+            CASOS DE USO:
+            - Auditoría de período específico
+            - Análisis de actividad semanal/mensual
+            - Investigación de discrepancias en fechas conocidas
+            - Reportes para contabilidad
+            -->
+        </div>
+        
+        <div>
+            <label for="date_to">Fecha hasta:</label>
+            <input type="date" id="date_to" name="date_to" value="{{ date_to or '' }}" class="filter-input">
+            <!-- 
+            FILTRO DE FECHA FINAL:
+            Combinado con date_from permite rangos de fechas.
+            Backend procesa: WHERE created_at BETWEEN date_from AND date_to
+            -->
+        </div>
+        
+        <div class="filter-actions">
+            <!-- Contenedor para botones de acción de filtros -->
+            <button type="submit" class="btn filter-btn">Filtrar</button>
+            <!-- 
+            BOTÓN APLICAR FILTROS:
+            - type="submit": Envía formulario con todos los filtros
+            - Genera URL con múltiples parámetros
+            - Ejemplo: ?product=laptop&movement_type=entrada&date_from=2024-01-01
+            -->
+            
+            <a href="{{ url_for('inventory_movements') }}" class="btn clear-btn">Limpiar</a>
+            <!-- 
+            BOTÓN LIMPIAR FILTROS:
+            - url_for('inventory_movements'): URL base sin parámetros
+            - Efecto: remueve todos los filtros aplicados
+            - Vuelve a mostrar todos los movimientos (paginados)
+            -->
+        </div>
+    </form>
+</div>
+
+<!-- TABLA PRINCIPAL DE MOVIMIENTOS -->
+<div class="movements-table-container">
+    <!-- 
+    CONTENEDOR CON SCROLL HORIZONTAL:
+    Tabla compleja con muchas columnas que requiere scroll en móviles.
+    Mantiene headers fijos durante el scroll vertical.
+    -->
+    <table>
+        <thead>
+            <tr>
+                <!-- 
+                COLUMNAS DEL HISTORIAL:
+                Diseñadas para auditoría completa de cada movimiento.
+                Orden optimizado: temporal → identificación → cambios → contexto
+                -->
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Tipo</th>
+                <th>Cantidad Antes</th>
+                <th>Cantidad Después</th>
+                <th>Cambio</th>
+                <th>Motivo</th>
+                <th>Usuario</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movement in movements %}
+            <!-- 
+            LOOP DE MOVIMIENTOS PAGINADOS:
+            'movements' contiene solo los registros de la página actual.
+            Típicamente 50 registros por página para performance óptima.
+            -->
+            <tr>
+                <td>{{ movement['created_at'] }}</td>
+                <!-- Timestamp exacto del movimiento -->
+                
+                <td>{{ movement['product_name'] }}</td>
+                <!-- Nombre del producto afectado -->
+                
+                <td>
+                    {% if movement['movement_type'] == 'entrada' %}
+                    <!-- 
+                    BADGES DIFERENCIADOS POR TIPO:
+                    Cada tipo de movimiento tiene su propio badge visual.
+                    Permite identificación rápida en listas largas.
+                    -->
+                        <span class="movement-badge movement-entrada">
+                            ⬆️ Entrada
+                        </span>
+                    {% elif movement['movement_type'] == 'salida' %}
+                        <span class="movement-badge movement-salida">
+                            ⬇️ Salida
+                        </span>
+                    {% elif movement['movement_type'] == 'ajuste' %}
+                        <span class="movement-badge movement-ajuste">
+                            🔧 Ajuste
+                        </span>
+                        <!-- 
+                        BADGE DE AJUSTE:
+                        Específico para correcciones manuales de inventario.
+                        Incluye tanto ajustes positivos como negativos.
+                        -->
+                    {% elif movement['movement_type'] == 'creacion' %}
+                        <span class="movement-badge movement-creacion">
+                            ✨ Creación
+                        </span>
+                        <!-- 
+                        BADGE DE CREACIÓN:
+                        Marca cuando un producto se agrega al sistema.
+                        quantity_before será 0, quantity_after será inicial.
+                        -->
+                    {% elif movement['movement_type'] == 'eliminacion' %}
+                        <span class="movement-badge movement-eliminacion">
+                            🗑️ Eliminación
+                        </span>
+                        <!-- 
+                        BADGE DE ELIMINACIÓN:
+                        Marca cuando un producto se remueve del sistema.
+                        quantity_after será 0, registra stock final antes de eliminar.
+                        -->
+                    {% endif %}
+                </td>
+                <td>{{ movement['quantity_before'] }}</td>
+                <!-- 
+                CANTIDAD ANTES DEL MOVIMIENTO:
+                Stock existente antes de aplicar el cambio.
+                Crucial para auditoría y verificación de cálculos.
+                -->
+                
+                <td>{{ movement['quantity_after'] }}</td>
+                <!-- 
+                CANTIDAD DESPUÉS DEL MOVIMIENTO:
+                Stock resultante después de aplicar el cambio.
+                Debe coincidir con quantity_before + quantity_change.
+                -->
+                
+                <td>
+                    {% if movement['quantity_change'] > 0 %}
+                    <!-- 
+                    VISUALIZACIÓN DE CAMBIOS CON COLORES:
+                    Diferentes estilos según el tipo de cambio para reconocimiento visual rápido.
+                    -->
+                        <span class="quantity-positive">+{{ movement['quantity_change'] }}</span>
+                        <!-- 
+                        CAMBIO POSITIVO:
+                        - Prefijo + explícito para claridad
+                        - Color verde para indicar crecimiento
+                        - Casos: entradas, ajustes al alza, correcciones positivas
+                        -->
+                    {% elif movement['quantity_change'] < 0 %}
+                        <span class="quantity-negative">{{ movement['quantity_change'] }}</span>
+                        <!-- 
+                        CAMBIO NEGATIVO:
+                        - El signo - ya está incluido en el número
+                        - Color rojo para indicar reducción
+                        - Casos: salidas, ajustes a la baja, correcciones negativas
+                        -->
+                    {% else %}
+                        <span class="quantity-neutral">0</span>
+                        <!-- 
+                        CAMBIO NEUTRO:
+                        - Para movimientos que no afectan cantidad
+                        - Casos: cambio de nombre, categoría, precio
+                        - Ediciones que no impactan stock físico
+                        -->
+                    {% endif %}
+                </td>
+                
+                <td>{{ movement['reason'] or 'Sin motivo especificado' }}</td>
+                <!-- 
+                MOTIVO DEL MOVIMIENTO CON FALLBACK:
+                movement['reason'] or 'Sin motivo especificado'
+                
+                MANEJO DE DATOS OPCIONALES:
+                - Si reason existe y no está vacío: muestra el motivo
+                - Si reason es None o vacío: muestra texto por defecto
+                - Mejora la legibilidad evitando celdas vacías
+                
+                EJEMPLOS DE MOTIVOS:
+                - "Compra a proveedor XYZ"
+                - "Venta al cliente ABC"
+                - "Inventario físico - ajuste"
+                - "Producto dañado - baja"
+                - "Error de captura - corrección"
+                -->
+                
+                <td>{{ movement['username'] }}</td>
+                <!-- Usuario responsable del movimiento para accountability -->
+            </tr>
+            {% else %}
+            <!-- 
+            ELSE DE LOOP - ESTADO SIN RESULTADOS:
+            Se ejecuta cuando no hay movimientos que mostrar.
+            Puede ser por filtros restrictivos o falta de datos.
+            -->
+            <tr>
+                <td colspan="8" class="no-movements">
+                    No hay movimientos registrados con los filtros aplicados.
+                </td>
+                <!-- 
+                MENSAJE ESPECÍFICO PARA FILTROS:
+                Indica que es problema de filtros, no falta de datos.
+                colspan="8" hace que el mensaje ocupe toda la fila.
+                -->
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- SISTEMA DE PAGINACIÓN AVANZADO -->
+{% if total_pages > 1 %}
+<!-- 
+PAGINACIÓN CONDICIONAL:
+Solo se muestra si hay más de una página.
+Evita elementos innecesarios en datasets pequeños.
+-->
+<div class="pagination-container">
+    {% if has_prev %}
+    <!-- 
+    BOTÓN PÁGINA ANTERIOR:
+    has_prev es un booleano calculado en Flask.
+    Solo aparece si no estamos en la primera página.
+    -->
+        <a href="{{ url_for('inventory_movements', page=page-1, product=product_filter, movement_type=movement_type_filter, date_from=date_from, date_to=date_to) }}" 
+           class="btn pagination-btn">← Anterior</a>
+        <!-- 
+        URL_FOR CON MÚLTIPLES PARÁMETROS:
+        Preserva TODOS los filtros aplicados al cambiar de página.
+        
+        PARÁMETROS PRESERVADOS:
+        - page=page-1: Página anterior
+        - product=product_filter: Filtro de producto
+        - movement_type=movement_type_filter: Filtro de tipo
+        - date_from=date_from: Filtro de fecha inicio
+        - date_to=date_to: Filtro de fecha fin
+        
+        RESULTADO: Usuario mantiene filtros al navegar páginas.
+        -->
+    {% endif %}
+    
+    {% for p in range(1, total_pages + 1) %}
+    <!-- 
+    LOOP PARA NÚMEROS DE PÁGINA:
+    range(1, total_pages + 1) genera: [1, 2, 3, ..., total_pages]
+    
+    EJEMPLO:
+    Si total_pages = 10: range(1, 11) = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    -->
+        {% if p == page %}
+        <!-- PÁGINA ACTUAL: Sin enlace, solo indicador visual -->
+            <span class="pagination-current">{{ p }}</span>
+        {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+        <!-- 
+        LÓGICA COMPLEJA DE PAGINACIÓN CON ELIPSIS:
+        
+        CONDICIONES PARA MOSTRAR NÚMERO:
+        1. p <= 3: Siempre muestra páginas 1, 2, 3
+        2. p >= total_pages - 2: Siempre muestra últimas 3 páginas
+        3. (p >= page - 1 and p <= page + 1): Muestra página actual ± 1
+        
+        EJEMPLO CON 15 PÁGINAS, PÁGINA ACTUAL = 8:
+        Muestra: 1 2 3 ... 7 8 9 ... 13 14 15
+        
+        PÁGINAS MOSTRADAS:
+        - 1, 2, 3 (condición 1)
+        - 7, 8, 9 (condición 3: 8-1 <= p <= 8+1)
+        - 13, 14, 15 (condición 2: p >= 15-2)
+        -->
+            <a href="{{ url_for('inventory_movements', page=p, product=product_filter, movement_type=movement_type_filter, date_from=date_from, date_to=date_to) }}" 
+               class="btn pagination-page">{{ p }}</a>
+        {% elif p == 4 and page > 5 %}
+        <!-- 
+        ELIPSIS IZQUIERDA:
+        Se muestra cuando hay gap entre páginas iniciales (1,2,3) y página actual.
+        Solo si página actual > 5 para evitar elipsis innecesaria.
+        -->
+            <span class="pagination-ellipsis">...</span>
+        {% elif p == total_pages - 3 and page < total_pages - 4 %}
+        <!-- 
+        ELIPSIS DERECHA:
+        Se muestra cuando hay gap entre página actual y páginas finales.
+        Solo si hay suficiente distancia para justificar elipsis.
+        -->
+            <span class="pagination-ellipsis">...</span>
+        {% endif %}
+    {% endfor %}
+    
+    {% if has_next %}
+    <!-- 
+    BOTÓN PÁGINA SIGUIENTE:
+    has_next es calculado por Flask basado en registros restantes.
+    Solo aparece si no estamos en la última página.
+    -->
+        <a href="{{ url_for('inventory_movements', page=page+1, product=product_filter, movement_type=movement_type_filter, date_from=date_from, date_to=date_to) }}" 
+           class="btn pagination-btn">Siguiente →</a>
+        <!-- 
+        INCREMENTO DE PÁGINA:
+        page+1 navega a página siguiente preservando filtros.
+        Mismo patrón que página anterior para consistencia.
+        -->
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- RESUMEN DE REGISTROS MOSTRADOS -->
+<div class="records-summary">
+    <!-- 
+    CÁLCULO DINÁMICO DE RANGOS CON MATEMÁTICAS JINJA2:
+    
+    FÓRMULA REGISTRO INICIAL:
+    ((page-1) * 50 + 1) if movements else 0
+    
+    EJEMPLO con page=3:
+    (3-1) * 50 + 1 = 101
+    
+    FÓRMULA REGISTRO FINAL:
+    ((page-1) * 50 + movements|length) if movements else 0
+    
+    EJEMPLO con page=3, 35 resultados en página:
+    (3-1) * 50 + 35 = 135
+    
+    PROTECCIÓN CONTRA PÁGINAS VACÍAS:
+    Operador ternario previene mostrar "1-0" cuando no hay datos.
+    Sin movements: muestra "0-0 de X registros"
+    -->
+    Mostrando {{ ((page-1) * 50 + 1) if movements else 0 }} - {{ ((page-1) * 50 + movements|length) if movements else 0 }} de {{ total_records }} registros
+    <!-- 
+    FILTRO |length:
+    Cuenta elementos en la lista 'movements' de la página actual.
+    Esencial para páginas parciales (última página con menos de 50).
+    
+    RESULTADO EJEMPLO:
+    "Mostrando 101-135 de 247 registros"
+    -->
+</div>
+{% endblock %}
+
+<!-- 
+=============================================================================
+RESUMEN TÉCNICO - INVENTORY_MOVEMENTS.HTML:
+=============================================================================
+
+PROPÓSITO:
+Template para mostrar historial completo de movimientos de inventario con 
+capacidades avanzadas de filtrado, paginación y visualización de datos.
+
+CARACTERÍSTICAS PRINCIPALES:
+1. Sistema de filtros múltiples (producto, tipo, fechas)
+2. Paginación con elipsis inteligente
+3. Preservación de estado a través de URLs
+4. Badges visuales para tipos de movimiento
+5. Cálculos matemáticos para rangos de registros
+6. Auditoría completa con before/after quantities
+
+PATRONES JINJA2 AVANZADOS IMPLEMENTADOS:
+- Operadores ternarios para valores condicionales
+- Matemáticas complejas en templates
+- Preservación de parámetros múltiples en URLs
+- For...else loops para estados vacíos
+- Filtros de formato y conteo (|length)
+- Condicionales anidadas para lógica compleja
+
+CASOS DE USO:
+- Auditoría de inventario
+- Seguimiento de cambios por usuario
+- Análisis de patrones de movimiento
+- Verificación de cálculos de stock
+- Reportes históricos filtrados
+
+DEPENDENCIAS TÉCNICAS:
+- Flask pagination object
+- Múltiples parámetros de query string
+- Sistema de usuarios para accountability
+- Base de datos con historial completo
+- CSS personalizado para badges y tablas responsive
+=============================================================================
+-->

@@ -1,0 +1,105 @@
+/* Estilos específicos para la página de inventario (index) */
+
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.inventory-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.search-input {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 250px;
+}
+
+.search-btn {
+    padding: 0.5rem 1rem;
+}
+
+.clear-btn {
+    padding: 0.5rem 1rem;
+    background-color: #6c757d;
+}
+
+.search-results {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #e3f2fd;
+    border-radius: 4px;
+}
+
+.search-results-count {
+    color: #666;
+}
+
+.inventory-table-container {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sku-code {
+    background: #f1f3f4;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.85rem;
+}
+
+.no-sku {
+    color: #999;
+    font-style: italic;
+}
+
+.status-low-stock {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.status-ok {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.actions-container {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.adjust-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    background-color: #17a2b8;
+    color: white;
+}
+
+.no-products {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+}
+
+.inventory-summary {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}

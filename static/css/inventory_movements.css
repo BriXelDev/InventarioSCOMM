@@ -1,0 +1,151 @@
+/* Estilos específicos para la página de movimientos de inventario */
+
+.movements-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.records-counter {
+    background: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+}
+
+/* Sección de filtros */
+.filters-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.filters-title {
+    margin-bottom: 1rem;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+.filter-input {
+    width: 100%;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-btn {
+    flex: 1;
+}
+
+.clear-btn {
+    background-color: #6c757d;
+    flex: 1;
+    text-align: center;
+    text-decoration: none;
+}
+
+/* Tabla de movimientos */
+.movements-table-container {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Badges de tipo de movimiento */
+.movement-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.movement-entrada {
+    background: #d4edda;
+    color: #155724;
+}
+
+.movement-salida {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.movement-ajuste {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.movement-creacion {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.movement-eliminacion {
+    background: #f5c6cb;
+    color: #721c24;
+}
+
+/* Cambios de cantidad */
+.quantity-positive {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.quantity-negative {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.quantity-neutral {
+    color: #6c757d;
+}
+
+.no-movements {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+}
+
+/* Paginación */
+.pagination-container {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    background-color: #6c757d;
+}
+
+.pagination-current {
+    background: #007bff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.pagination-page {
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.pagination-ellipsis {
+    padding: 0.5rem;
+}
+
+/* Resumen de registros */
+.records-summary {
+    margin-top: 1rem;
+    text-align: center;
+    color: #666;
+}

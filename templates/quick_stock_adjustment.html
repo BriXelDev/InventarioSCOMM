@@ -1,0 +1,445 @@
+<!-- 
+=============================================================================
+QUICK_STOCK_ADJUSTMENT.HTML - AJUSTE RÁPIDO DE INVENTARIO
+=============================================================================
+
+PROPÓSITO:
+Template especializado para realizar ajustes rápidos de stock de productos
+específicos. Permite incrementar o decrementar inventario con trazabilidad
+completa y validaciones de negocio.
+
+CARACTERÍSTICAS PRINCIPALES:
+- Formulario específico para ajustes de stock
+- Validación frontend con JavaScript personalizado
+- Información contextual del producto seleccionado
+- Tipos de ajuste diferenciados (entrada/salida)
+- Integración con sistema de movimientos de inventario
+- Prevención de stock negativo
+
+PATRONES JINJA2 IMPLEMENTADOS:
+- Template inheritance con layout base
+- Filtros de datos (|int para conversiones)
+- Atributos HTML dinámicos (data-*)
+- Valores por defecto con operador OR
+- URL generation para navegación y recursos
+
+VALIDACIONES Y CONTROLES:
+- HTML5 validation (required, min, type=number)
+- JavaScript para cálculos en tiempo real
+- Prevención de operaciones que generen stock negativo
+- Motivos obligatorios para trazabilidad
+=============================================================================
+-->
+
+{% extends "layout.html" %}
+<!-- 
+HERENCIA DE LAYOUT BASE:
+Aprovecha toda la infraestructura del sistema:
+- Navegación con control de acceso por roles
+- Sistema de mensajes flash para feedback
+- CSS base y estructura responsive
+- JavaScript compartido y manejo de sesiones
+-->
+
+{% block title %}Ajuste de Stock - Sistema de Inventario{% endblock %}
+<!-- 
+TÍTULO ESPECÍFICO DE FUNCIONALIDAD:
+Identifica claramente la acción que se está realizando.
+Útil para navegación y bookmarks del usuario.
+-->
+
+{% block head %}
+    <!-- 
+    CSS ESPECÍFICO PARA AJUSTES DE STOCK:
+    Estilos dedicados para:
+    - Formulario de ajuste centrado y destacado
+    - Información del producto con diseño card
+    - Botones diferenciados por tipo de acción
+    - Estados visuales para feedback en tiempo real
+    - Responsive design para dispositivos móviles
+    -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quick_stock_adjustment.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- CONTENIDO PRINCIPAL DEL AJUSTE DE STOCK -->
+
+<div class="stock-adjustment-container">
+    <!-- 
+    CONTENEDOR PRINCIPAL:
+    Wrapper para toda la funcionalidad de ajuste.
+    Permite estilos específicos y centrado del contenido.
+    -->
+    
+    <h2 class="stock-adjustment-title">🔧 Ajuste Rápido de Stock</h2>
+    <!-- 
+    TÍTULO CON ICONO:
+    - Emoji de herramienta (🔧) refuerza visualmente la función de ajuste
+    - Clase específica para tipografía y espaciado
+    - "Rápido" indica que es una operación ágil, no un proceso complejo
+    -->
+    
+    <div class="product-info" data-current-stock="{{ product['quantity']|int }}">
+    <!-- 
+    INFORMACIÓN DEL PRODUCTO CON DATA ATTRIBUTE:
+    
+    DATA-CURRENT-STOCK:
+    Atributo HTML personalizado que almacena el stock actual.
+    JavaScript puede leer este valor para validaciones en tiempo real.
+    
+    FILTRO |int:
+    Convierte el valor a entero para evitar problemas con decimales.
+    Asegura que JavaScript reciba un número válido.
+    
+    EJEMPLO:
+    Si product['quantity'] = "25.0" → data-current-stock="25"
+    -->
+        <h3>Producto: {{ product['name'] }}</h3>
+        <!-- 
+        NOMBRE DEL PRODUCTO:
+        Identificación clara del item que se está ajustando.
+        -->
+        
+        <p><strong>Stock actual:</strong> <span class="current-stock">{{ product['quantity'] }} unidades</span></p>
+        <!-- 
+        STOCK ACTUAL DESTACADO:
+        - <strong> para label descriptivo
+        - <span> con clase específica para el valor numérico
+        - Permite que JavaScript actualice el valor dinámicamente
+        - "unidades" clarifica la métrica utilizada
+        -->
+        
+        <p><strong>Categoría:</strong> {{ product['category'] or 'Sin categoría' }}</p>
+        <!-- 
+        CATEGORÍA CON VALOR POR DEFECTO:
+        
+        OPERADOR OR:
+        Si product['category'] es None, vacío, o False, usa 'Sin categoría'.
+        Previene mostrar valores None/null al usuario.
+        
+        CASOS DE USO:
+        - product['category'] = "Electrónicos" → "Electrónicos"
+        - product['category'] = None → "Sin categoría"
+        - product['category'] = "" → "Sin categoría"
+        -->
+        
+        <p><strong>Proveedor:</strong> {{ product['provider'] or 'Sin proveedor' }}</p>
+        <!-- 
+        PROVEEDOR CON FALLBACK SIMILAR:
+        Mismo patrón que categoría para datos opcionales.
+        Mejora la experiencia mostrando texto descriptivo vs valores nulos.
+        -->
+    </div>
+    
+    <!-- FORMULARIO DE AJUSTE -->
+    <div class="adjustment-form-container">
+        <!-- 
+        CONTENEDOR DEL FORMULARIO:
+        Wrapper específico para estilos del form de ajuste.
+        -->
+        
+        <form method="POST" class="adjustment-form">
+        <!-- 
+        FORMULARIO POST PARA AJUSTE:
+        
+        METHOD="POST":
+        Operación de modificación de datos requiere POST por seguridad.
+        
+        ACTION IMPLÍCITA:
+        No especifica action, envía al mismo endpoint que muestra la página.
+        Flask maneja GET (mostrar form) y POST (procesar ajuste).
+        -->
+            <div class="form-group">
+                <label for="adjustment_type">Tipo de Ajuste:</label>
+                <select id="adjustment_type" name="adjustment_type" required>
+                    <option value="">Seleccionar tipo...</option>
+                    <!-- 
+                    OPCIÓN VACÍA INICIAL:
+                    Fuerza al usuario a seleccionar explícitamente el tipo.
+                    Previene ajustes accidentales por valor por defecto.
+                    -->
+                    <option value="add">➕ Agregar Stock (Entrada)</option>
+                    <option value="subtract">➖ Reducir Stock (Salida)</option>
+                    <!-- 
+                    OPCIONES CON ICONOS DESCRIPTIVOS:
+                    
+                    VALUE="add":
+                    - Procesado en Flask como incremento de stock
+                    - Icono ➕ refuerza visualmente la acción
+                    - Texto descriptivo incluye tipo de movimiento
+                    
+                    VALUE="subtract":
+                    - Procesado como decremento de stock
+                    - Icono ➖ indica reducción
+                    - JavaScript validará que no genere stock negativo
+                    -->
+                </select>
+                <!-- 
+                SELECT REQUERIDO:
+                HTML5 validation obliga a seleccionar una opción válida.
+                -->
+            </div>
+            
+            <div class="form-group">
+                <label for="quantity">Cantidad:</label>
+                <input type="number" id="quantity" name="quantity" min="1" required>
+                <!-- 
+                INPUT NUMÉRICO CON VALIDACIONES:
+                
+                TYPE="number":
+                - Teclado numérico en móviles
+                - Spinners para incrementar/decrementar
+                - Validación automática de formato numérico
+                
+                MIN="1":
+                - Previene cantidades cero o negativas
+                - HTML5 validation automática
+                - JavaScript puede acceder a esta restricción
+                
+                REQUIRED:
+                - Campo obligatorio para procesar ajuste
+                - Sin cantidad no se puede realizar operación
+                -->
+            </div>
+            
+            <div class="form-group">
+                <label for="reason">Motivo del Ajuste:</label>
+                <input type="text" id="reason" name="reason" placeholder="Ej: Recepción de mercancía, Devolución, Pérdida, etc." required>
+                <!-- 
+                MOTIVO OBLIGATORIO PARA TRAZABILIDAD:
+                
+                TYPE="text":
+                Campo de texto libre para descripción del motivo.
+                
+                PLACEHOLDER EDUCATIVO:
+                Ejemplos concretos guían al usuario sobre qué escribir.
+                
+                REQUIRED:
+                Auditoría y trazabilidad requieren motivo documentado.
+                Cada movimiento debe tener justificación.
+                
+                CASOS DE USO COMUNES:
+                - "Recepción de mercancía del proveedor X"
+                - "Devolución de cliente por defecto"
+                - "Inventario físico - diferencia encontrada"
+                - "Producto dañado - baja por calidad"
+                -->
+            </div>
+            
+            <!-- BOTONES DE ACCIÓN -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success adjustment-btn">Realizar Ajuste</button>
+                <!-- 
+                BOTÓN PRINCIPAL DE ENVÍO:
+                
+                TYPE="submit":
+                Envía el formulario completo al backend.
+                
+                CLASES CSS:
+                - btn: Estilo base de botón del sistema
+                - btn-success: Color verde para acción positiva
+                - adjustment-btn: Estilos específicos de ajuste
+                
+                TEXTO DESCRIPTIVO:
+                "Realizar Ajuste" claramente indica la acción final.
+                -->
+                
+                <a href="{{ url_for('home') }}" class="btn cancel-btn">Cancelar</a>
+                <!-- 
+                BOTÓN DE CANCELACIÓN:
+                
+                ENLACE VS BOTÓN:
+                <a> en lugar de <button> porque navega, no envía formulario.
+                
+                URL_FOR('home'):
+                Regresa al listado principal de productos.
+                Navegación lógica después de cancelar operación.
+                
+                CLASE cancel-btn:
+                Estilo típicamente gris o neutro para acciones secundarias.
+                -->
+            </div>
+        </form>
+    </div>
+    
+    <!-- INFORMACIÓN EDUCATIVA -->
+    <div class="info-section">
+        <h4>💡 Información:</h4>
+        <!-- 
+        SECCIÓN INFORMATIVA CON ICONO:
+        Icono de bombilla (💡) indica tips o información útil.
+        -->
+        <ul>
+            <li><strong>Entrada:</strong> Agrega la cantidad especificada al stock actual</li>
+            <!-- 
+            EXPLICACIÓN DE ENTRADA:
+            Clarifica que "add" incrementa el stock existente.
+            Previene confusión sobre si reemplaza o suma.
+            -->
+            <li><strong>Salida:</strong> Reduce la cantidad del stock actual (no puede ser negativo)</li>
+            <!-- 
+            EXPLICACIÓN DE SALIDA CON RESTRICCIÓN:
+            - Clarifica que "subtract" reduce stock
+            - Importante: menciona restricción de stock negativo
+            - Usuario entiende limitaciones antes de intentar operación
+            -->
+            <li>Todos los ajustes quedan registrados en el historial de movimientos</li>
+            <!-- 
+            INFORMACIÓN DE TRAZABILIDAD:
+            Asegura al usuario que hay auditoría completa.
+            Importante para control interno y responsabilidad.
+            -->
+        </ul>
+    </div>
+</div>
+<!-- JAVASCRIPT ESPECÍFICO PARA AJUSTES -->
+{% block scripts %}
+    <!-- 
+    SCRIPT ESPECÍFICO PARA FUNCIONALIDAD DE AJUSTE:
+    
+    ARCHIVO DEDICADO:
+    quick_stock_adjustment.js contiene lógica específica como:
+    - Validación en tiempo real de stock negativo
+    - Cálculo de stock resultante al cambiar valores
+    - Feedback visual durante la edición
+    - Prevención de envío si validaciones fallan
+    
+    INTEGRACIÓN CON DATA ATTRIBUTES:
+    JavaScript lee data-current-stock del HTML para validaciones.
+    
+    FUNCIONALIDADES TÍPICAS:
+    - Mostrar stock resultante antes de enviar
+    - Prevenir subtract que genere valores negativos
+    - Resaltar campos con errores de validación
+    - Confirmar operaciones de gran impacto
+    -->
+    <script src="{{ url_for('static', filename='js/quick_stock_adjustment.js') }}"></script>
+{% endblock %}
+{% endblock %}
+
+<!-- 
+=============================================================================
+RESUMEN TÉCNICO - QUICK_STOCK_ADJUSTMENT.HTML:
+=============================================================================
+
+PROPÓSITO:
+Template especializado para realizar ajustes rápidos y seguros de inventario
+en productos específicos. Implementa una interfaz intuitiva con validaciones
+robustas para operaciones críticas de stock.
+
+CARACTERÍSTICAS IMPLEMENTADAS:
+
+1. INTERFAZ DE AJUSTE ESPECÍFICO:
+   - Información contextual del producto seleccionado
+   - Formulario dedicado con validaciones HTML5
+   - Tipos de ajuste claramente diferenciados (entrada/salida)
+   - Botones de acción con estilos diferenciados
+
+2. VALIDACIONES MULTINIVEL:
+   - HTML5 validation (required, min, type=number)
+   - JavaScript en tiempo real para stock negativo
+   - Data attributes para integración frontend-backend
+   - Motivos obligatorios para trazabilidad completa
+
+3. EXPERIENCIA DE USUARIO OPTIMIZADA:
+   - Información del producto siempre visible
+   - Iconos descriptivos para tipos de ajuste
+   - Placeholders educativos con ejemplos
+   - Sección informativa con reglas del negocio
+
+4. INTEGRACIÓN CON SISTEMA DE INVENTARIO:
+   - Trazabilidad completa en historial de movimientos
+   - Preservación de contexto del producto
+   - Navegación coherente con cancelación
+   - Feedback a través de mensajes flash
+
+5. DATOS DINÁMICOS Y FALLBACKS:
+   - Filtro |int para conversión segura de tipos
+   - Operador OR para valores por defecto
+   - Data attributes para JavaScript
+   - Información contextual completa del producto
+
+PATRONES JINJA2 AVANZADOS UTILIZADOS:
+
+- FILTROS DE CONVERSIÓN:
+  {{ product['quantity']|int }} (conversión segura a entero)
+
+- VALORES POR DEFECTO:
+  {{ product['category'] or 'Sin categoría' }} (fallback para nulos)
+
+- DATA ATTRIBUTES DINÁMICOS:
+  data-current-stock="{{ product['quantity']|int }}" (integración JS)
+
+- TEMPLATE INHERITANCE:
+  {% extends "layout.html" %} con blocks específicos
+
+- URL GENERATION:
+  {{ url_for('home') }} para navegación coherente
+
+FLUJO DE OPERACIÓN:
+
+1. ACCESO A AJUSTE:
+   - Usuario selecciona producto desde listado principal
+   - Sistema carga template con información del producto
+   - Formulario se inicializa vacío pero con contexto
+
+2. CONFIGURACIÓN DE AJUSTE:
+   - Usuario selecciona tipo (entrada/salida)
+   - Ingresa cantidad numérica (min=1)
+   - Proporciona motivo descriptivo obligatorio
+   - JavaScript valida en tiempo real
+
+3. VALIDACIÓN Y ENVÍO:
+   - HTML5 valida campos requeridos y formatos
+   - JavaScript previene stock negativo en sustracciones
+   - POST request envía datos al backend
+   - Flask procesa y actualiza inventario
+
+4. RESULTADO Y NAVEGACIÓN:
+   - Flash message confirma éxito o informa errores
+   - Usuario puede continuar con más ajustes
+   - Cancelación regresa al listado principal
+   - Historial de movimientos registra operación
+
+VALIDACIONES DE NEGOCIO:
+
+- PREVENCIÓN DE STOCK NEGATIVO:
+  JavaScript + backend verifican que sustracciones no generen valores < 0
+
+- CANTIDADES POSITIVAS:
+  HTML5 min="1" + type="number" aseguran valores válidos
+
+- MOTIVOS OBLIGATORIOS:
+  Required attribute garantiza trazabilidad completa
+
+- TIPOS DE AJUSTE EXPLÍCITOS:
+  Select con opción vacía fuerza selección consciente
+
+CONSIDERACIONES DE SEGURIDAD:
+- Validación dual (frontend + backend) para operaciones críticas
+- Motivos obligatorios para auditoría y responsabilidad
+- Prevención de valores negativos accidentales
+- Trazabilidad completa de todas las operaciones
+
+CASOS DE USO PRINCIPALES:
+- Recepción de mercancía de proveedores
+- Ajustes por inventarios físicos
+- Corrección de errores de captura
+- Bajas por productos dañados o vencidos
+- Devoluciones de clientes
+
+DEPENDENCIAS TÉCNICAS:
+- layout.html para estructura base
+- quick_stock_adjustment.css para estilos específicos
+- quick_stock_adjustment.js para validaciones dinámicas
+- Sistema de productos Flask con stock tracking
+- Historial de movimientos para auditoría
+
+EXTENSIBILIDAD:
+- Fácil agregar nuevos tipos de ajuste
+- Campos adicionales para más contexto
+- Validaciones personalizadas por tipo de producto
+- Integración con códigos de barras
+- Workflows de aprobación para ajustes grandes
+=============================================================================
+-->

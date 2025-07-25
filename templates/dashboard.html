@@ -1,0 +1,499 @@
+<!-- 
+PLANTILLA JINJA2 PARA DASHBOARD PRINCIPAL
+
+Este archivo implementa el panel de control principal del sistema de inventario.
+Es la pantalla más importante porque proporciona:
+
+1. ESTADÍSTICAS EN TIEMPO REAL: Total productos, valor, alertas
+2. PRODUCTOS CON ALERTAS: Stock bajo y sin stock  
+3. ACTIVIDAD DE USUARIOS: Movimientos recientes por usuario
+4. MOVIMIENTOS RECIENTES: Historial de cambios en inventario
+5. ACCIONES RÁPIDAS: Enlaces directos a funciones importantes
+
+CARACTERÍSTICAS TÉCNICAS:
+- Jinja2: Condicionales complejas, loops, filtros de formato
+- JavaScript: dashboard.js para funcionalidad dinámica
+- CSS Grid: Layout responsive para cards de estadísticas  
+- Tablas dinámicas: Generadas según datos disponibles
+- Sistema de roles: Diferentes vistas según permisos
+
+TECNOLOGÍAS UTILIZADAS:
+- Flask: Datos dinámicos desde el backend
+- Jinja2: Renderizado condicional y loops
+- HTML5: Elementos semánticos y estructura
+- CSS Grid/Flexbox: Layout moderno y responsive
+- JavaScript: Interactividad y actualizaciones en tiempo real
+-->
+
+{% extends "layout.html" %}
+<!-- 
+HERENCIA DE PLANTILLAS:
+Hereda la estructura base de layout.html (header, navegación, footer)
+Este template define solo el contenido específico del dashboard
+-->
+
+{% block title %}Dashboard - Sistema de Inventario{% endblock %}
+<!-- Título que aparecerá en la pestaña del navegador -->
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+<!-- 
+BLOQUE HEAD - CSS ESPECÍFICO:
+Incluye estilos específicos para el dashboard. url_for() genera la ruta segura.
+Los estilos incluyen:
+- Grid layout para cards de estadísticas
+- Estilos para tablas de alertas y movimientos
+- Badges y estados visuales (crítico, warning, etc.)
+- Responsive design para diferentes pantallas
+- Animaciones para cards y elementos interactivos
+-->
+
+{% block content %}
+<!-- INICIO DEL CONTENIDO PRINCIPAL DEL DASHBOARD -->
+<div class="dashboard-header">
+    <!-- 
+    HEADER DEL DASHBOARD:
+    Sección superior con título y información de actualización.
+    Proporciona contexto temporal sobre la frescura de los datos.
+    -->
+    <h2>📊 Dashboard</h2>
+    <div class="last-update">
+        Última actualización: <span id="lastUpdate"></span>
+        <!-- 
+        ELEMENTO DINÁMICO:
+        El span con id="lastUpdate" será poblado por JavaScript
+        en dashboard.js para mostrar cuándo se actualizaron los datos.
+        -->
+    </div>
+</div>
+
+<!-- GRID DE ESTADÍSTICAS PRINCIPALES -->
+<div class="stats-grid">
+    <!-- 
+    CONTENEDOR GRID PARA CARDS:
+    CSS Grid layout que organiza las estadísticas en cards.
+    Se adapta automáticamente a diferentes tamaños de pantalla:
+    - Desktop: 4 columnas
+    - Tablet: 2 columnas  
+    - Mobile: 1 columna
+    -->
+    
+    <div class="stat-card stat-card-products">
+        <!-- 
+        CARD DE TOTAL PRODUCTOS:
+        Primera estadística principal. Muestra el número total de productos únicos.
+        La clase stat-card-products permite estilos específicos (color, icono).
+        -->
+        <div class="stat-card-content">
+            <div>
+                <h3>{{ dashboard_stats['total_products'] or 0 }}</h3>
+                <!-- 
+                JINJA2 VALOR CON FALLBACK:
+                dashboard_stats es un diccionario enviado desde Flask.
+                El operador 'or 0' proporciona un valor por defecto si:
+                - dashboard_stats es None
+                - dashboard_stats['total_products'] no existe
+                - El valor es falsy (None, 0, '', etc.)
+                -->
+                <p>Total Productos</p>
+            </div>
+            <div class="stat-icon">📦</div>
+            <!-- Emoji como icono visual para identificar rápidamente la métrica -->
+        </div>
+    </div>
+    
+    <div class="stat-card stat-card-items">
+        <!-- CARD DE TOTAL ARTÍCULOS (suma de cantidades) -->
+        <div class="stat-card-content">
+            <div>
+                <h3>{{ dashboard_stats['total_items'] or 0 }}</h3>
+                <p>Total Artículos</p>
+                <!-- 
+                DIFERENCIA CONCEPTUAL:
+                - total_products: Número de productos únicos (filas en BD)
+                - total_items: Suma de todas las cantidades (inventario físico)
+                -->
+            </div>
+            <div class="stat-icon">📈</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-card-value">
+        <!-- CARD DE VALOR TOTAL DEL INVENTARIO -->
+        <div class="stat-card-content">
+            <div>
+                <h3>${{ "%.0f"|format(dashboard_stats['total_value'] or 0) }}</h3>
+                <!-- 
+                JINJA2 FILTRO DE FORMATO NUMÉRICO:
+                "%.0f"|format() es un filtro que:
+                1. Formatea números con 0 decimales (%.0f)
+                2. Similar a printf en C o format() en Python
+                3. Convierte 1234.56 en "1235" (redondeado)
+                4. Maneja None/valores vacíos con 'or 0'
+                -->
+                <p>Valor Total</p>
+            </div>
+            <div class="stat-icon">💰</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-card-low-stock">
+        <!-- CARD DE ALERTA - PRODUCTOS CON STOCK BAJO -->
+        <div class="stat-card-content">
+            <div>
+                <h3>{{ dashboard_stats['low_stock_count'] or 0 }}</h3>
+                <p>Stock Bajo</p>
+                <!-- 
+                MÉTRICA DE ALERTA:
+                Cuenta productos donde quantity < min_stock.
+                Crítico para gestión proactiva del inventario.
+                -->
+            </div>
+            <div class="stat-icon">⚠️</div>
+            <!-- Emoji de warning para indicar que requiere atención -->
+        </div>
+    </div>
+</div>
+
+<!-- CONTENIDO PRINCIPAL DEL DASHBOARD -->
+<div class="main-content">
+    <!-- 
+    CONTENEDOR PRINCIPAL:
+    Organiza las secciones principales del dashboard:
+    - Productos que necesitan atención (alertas)
+    - Actividad reciente de usuarios
+    Cada sección es independiente y se puede mostrar/ocultar según datos
+    -->
+    
+    <!-- SECCIÓN DE PRODUCTOS CON ALERTA -->
+    <div>
+        <h3>🚨 Productos que Necesitan Atención</h3>
+        <div class="alert-section">
+            {% if alert_products %}
+            <!-- 
+            CONDICIONAL JINJA2 - PRODUCTOS CON ALERTAS:
+            Esta condición verifica si existe la lista alert_products y no está vacía.
+            alert_products viene desde Flask con productos donde quantity <= min_stock
+            -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>Producto</th>
+                        <th>Stock Actual</th>
+                        <th>Stock Mínimo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in alert_products %}
+                    <!-- 
+                    LOOP JINJA2 PARA PRODUCTOS CRÍTICOS:
+                    Itera sobre cada producto que necesita atención.
+                    Cada 'product' es un diccionario con datos del producto.
+                    -->
+                    <tr>
+                        <td>
+                            {% if product['alert_level'] == 'critical' %}
+                            <!-- 
+                            CONDICIONAL ANIDADO - NIVEL CRÍTICO:
+                            alert_level es calculado en el backend:
+                            - 'critical': quantity = 0 (sin stock)
+                            - 'warning': 0 < quantity < min_stock (stock bajo)
+                            -->
+                                <span class="alert-badge alert-critical">
+                                    🔴 Sin Stock
+                                </span>
+                            {% elif product['alert_level'] == 'warning' %}
+                                <span class="alert-badge alert-warning">
+                                    🟡 Stock Bajo
+                                </span>
+                            {% endif %}
+                            <!-- 
+                            BADGES VISUALES:
+                            Elementos <span> con clases CSS que proporcionan:
+                            - Colores distintivos (rojo para crítico, amarillo para warning)
+                            - Emojis para reconocimiento visual rápido
+                            - Estilos consistentes en toda la aplicación
+                            -->
+                        </td>
+                        <td>{{ product['name'] }}</td>
+                        <td class="{{ 'stock-critical' if product['alert_level'] == 'critical' else 'stock-warning' }}">
+                            {{ product['quantity'] }}
+                            <!-- 
+                            JINJA2 EXPRESIÓN CONDICIONAL INLINE:
+                            La clase CSS se determina dinámicamente:
+                            - Si alert_level == 'critical' → class="stock-critical"
+                            - Si no → class="stock-warning"
+                            
+                            Esto permite estilos diferentes según la severidad:
+                            - stock-critical: texto rojo, fondo rojo claro
+                            - stock-warning: texto naranja, fondo amarillo claro
+                            -->
+                        </td>
+                        <td>{{ product['stock_min'] }}</td>
+                        <td>
+                            {% if session.role in ['admin', 'editor'] %}
+                            <!-- 
+                            CONTROL DE ACCESO BASADO EN ROLES:
+                            session.role viene de Flask session (login).
+                            Solo usuarios con rol 'admin' o 'editor' pueden ajustar stock.
+                            
+                            OPERADOR 'IN' DE JINJA2:
+                            Similar a Python: verifica si el valor está en la lista.
+                            session.role in ['admin', 'editor'] es True si el usuario
+                            tiene permisos para modificar inventario.
+                            -->
+                            <a href="{{ url_for('quick_stock_adjustment', product_id=product['id']) }}" 
+                               class="btn adjust-btn">
+                                🔧 Ajustar
+                            </a>
+                            <!-- 
+                            URL_FOR CON PARÁMETROS:
+                            url_for('quick_stock_adjustment', product_id=product['id'])
+                            
+                            Genera URL como: /quick-stock-adjustment/123
+                            donde 123 es el ID del producto específico.
+                            Flask usará este ID para cargar el producto correcto.
+                            -->
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <!-- 
+            ESTADO VACÍO - NO HAY ALERTAS:
+            Esta rama se ejecuta cuando alert_products está vacío o es None.
+            Proporciona feedback positivo al usuario.
+            -->
+            <div class="no-alerts">
+                <div class="no-alerts-icon">✅</div>
+                <p>¡Excelente! Todos los productos tienen stock adecuado.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- SECCIÓN DE ACTIVIDAD DE USUARIOS -->
+    <div>
+        <h3>👥 Actividad de Usuarios (7 días)</h3>
+        <div class="activity-section">
+            {% if user_activity %}
+            <!-- 
+            CONDICIONAL PARA ACTIVIDAD DE USUARIOS:
+            user_activity contiene estadísticas de los últimos 7 días:
+            - Número de movimientos por usuario
+            - Total de unidades movidas por usuario
+            - Se genera en Flask con consultas agregadas (GROUP BY)
+            -->
+            {% for user in user_activity %}
+            <!-- 
+            LOOP PARA CADA USUARIO ACTIVO:
+            Cada 'user' es un diccionario con:
+            - username: nombre del usuario
+            - movement_count: número de movimientos realizados
+            - total_quantity_moved: suma de cantidades movidas
+            -->
+            <div class="user-activity-item">
+                <div>
+                    <div class="user-activity-name">{{ user['username'] }}</div>
+                    <div class="user-activity-movements">{{ user['movement_count'] }} movimientos</div>
+                    <!-- 
+                    PLURALIZACIÓN AUTOMÁTICA:
+                    El texto dice "movimientos" (plural) incluso si es 1.
+                    Una mejora sería: 
+                    {{ user['movement_count'] }} movimiento{{ 's' if user['movement_count'] != 1 else '' }}
+                    -->
+                </div>
+                <div class="user-activity-stats">
+                    <div class="user-activity-quantity">{{ user['total_quantity_moved'] }}</div>
+                    <div class="user-activity-units">unidades</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <!-- ESTADO VACÍO - SIN ACTIVIDAD -->
+            <div class="no-activity">
+                <div class="no-activity-icon">📋</div>
+                <p>No hay actividad reciente</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- SECCIÓN DE MOVIMIENTOS RECIENTES -->
+<div>
+    <h3>📋 Movimientos Recientes</h3>
+    <div class="movements-section">
+        {% if recent_movements %}
+        <!-- 
+        CONDICIONAL PARA MOVIMIENTOS RECIENTES:
+        recent_movements es una lista de los últimos movimientos de inventario.
+        Incluye entradas, salidas, creaciones y eliminaciones de productos.
+        Se ordena por fecha descendente (más recientes primero).
+        -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Tipo</th>
+                    <th>Cambio</th>
+                    <th>Usuario</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for movement in recent_movements %}
+                <!-- 
+                LOOP PARA CADA MOVIMIENTO:
+                Cada 'movement' contiene:
+                - created_at: timestamp del movimiento
+                - product_name: nombre del producto afectado
+                - movement_type: tipo de operación (entrada/salida/etc.)
+                - quantity_change: cambio en la cantidad (+/-)
+                - username: quien realizó el movimiento
+                -->
+                <tr>
+                    <td>{{ movement['created_at'] }}</td>
+                    <td>{{ movement['product_name'] }}</td>
+                    <td>
+                        {% if movement['movement_type'] == 'entrada' %}
+                        <!-- 
+                        CONDICIONALES PARA TIPO DE MOVIMIENTO:
+                        Cada tipo tiene su propio badge visual con:
+                        - Color específico (definido en CSS)
+                        - Emoji para reconocimiento visual
+                        - Texto descriptivo
+                        -->
+                            <span class="movement-badge movement-entrada">
+                                ⬆️ Entrada
+                            </span>
+                        {% elif movement['movement_type'] == 'salida' %}
+                            <span class="movement-badge movement-salida">
+                                ⬇️ Salida
+                            </span>
+                        {% elif movement['movement_type'] == 'creacion' %}
+                            <span class="movement-badge movement-creacion">
+                                ✨ Creación
+                            </span>
+                        {% elif movement['movement_type'] == 'eliminacion' %}
+                            <span class="movement-badge movement-eliminacion">
+                                🗑️ Eliminación
+                            </span>
+                        {% endif %}
+                        <!-- 
+                        BADGES CON CLASES DINÁMICAS:
+                        movement-badge: clase base para todos los badges
+                        movement-[tipo]: clase específica para colores
+                        
+                        CSS puede usar estas clases como:
+                        .movement-entrada { background: green; }
+                        .movement-salida { background: red; }
+                        .movement-creacion { background: blue; }
+                        .movement-eliminacion { background: gray; }
+                        -->
+                    </td>
+                    <td>
+                        {% if movement['quantity_change'] > 0 %}
+                        <!-- 
+                        LÓGICA CONDICIONAL PARA CAMBIOS DE CANTIDAD:
+                        El quantity_change puede ser:
+                        - Positivo: aumentó el stock (entrada, ajuste positivo)
+                        - Negativo: disminuyó el stock (salida, ajuste negativo)  
+                        - Cero: movimiento sin cambio de cantidad (edición de datos)
+                        -->
+                            <span class="quantity-positive">+{{ movement['quantity_change'] }}</span>
+                            <!-- 
+                            FORMATO POSITIVO:
+                            Muestra + explícito para cambios positivos.
+                            CSS puede colorear en verde para indicar crecimiento.
+                            -->
+                        {% elif movement['quantity_change'] < 0 %}
+                            <span class="quantity-negative">{{ movement['quantity_change'] }}</span>
+                            <!-- 
+                            FORMATO NEGATIVO:
+                            El signo negativo ya está incluido en el número.
+                            CSS puede colorear en rojo para indicar reducción.
+                            -->
+                        {% else %}
+                            <span class="quantity-neutral">0</span>
+                            <!-- 
+                            CAMBIO NEUTRO:
+                            Para movimientos que no afectan cantidad
+                            (como editar nombre del producto).
+                            -->
+                        {% endif %}
+                    </td>
+                    <td>{{ movement['username'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <!-- ESTADO VACÍO - SIN MOVIMIENTOS -->
+        <div class="no-movements">
+            <div class="no-movements-icon">📋</div>
+            <p>No hay movimientos recientes</p>
+            <!-- 
+            FEEDBACK PARA ESTADO VACÍO:
+            Se muestra cuando:
+            - Es un sistema nuevo sin actividad
+            - Se filtraron todos los movimientos
+            - Hay un error en la consulta de datos
+            -->
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- BOTÓN FLOTANTE DE ACCIONES RÁPIDAS -->
+<div class="floating-actions">
+    <!-- 
+    BOTONES FLOTANTES (FAB - Floating Action Button):
+    Elementos que permanecen visibles mientras el usuario navega por el dashboard.
+    Proporcionan acceso rápido a las acciones más importantes.
+    
+    POSICIONAMIENTO:
+    - position: fixed en CSS
+    - Esquina inferior derecha típicamente
+    - z-index alto para estar sobre otros elementos
+    -->
+    {% if session.role in ['admin', 'editor'] %}
+    <!-- 
+    CONTROL DE ACCESO:
+    Solo usuarios con permisos de edición pueden ver las acciones rápidas.
+    Esto evita confusión a usuarios que solo tienen permisos de lectura.
+    -->
+    <a href="{{ url_for('add_product') }}" class="floating-btn">
+        ➕ Agregar Producto
+    </a>
+    <!-- 
+    ENLACE COMO BOTÓN FLOTANTE:
+    - url_for('add_product'): Navega a la página de agregar producto
+    - class="floating-btn": Estilos CSS para botón flotante
+    - Emoji ➕: Icono universal para "agregar"
+    
+    EXTENSIBILIDAD:
+    Se pueden agregar más botones flotantes:
+    - Ajuste rápido de stock
+    - Generar reporte
+    - Configuración
+    -->
+    {% endif %}
+</div>
+
+<!-- CARGA DE JAVASCRIPT ESPECÍFICO -->
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<!-- 
+JAVASCRIPT DEL DASHBOARD
+-->
+{% endblock %}
+<!-- 
+ENDBLOCK:
+Cierra el bloque 'content' que se definió al inicio.
+Este contenido se insertará en layout.html en el área principal.
+-->

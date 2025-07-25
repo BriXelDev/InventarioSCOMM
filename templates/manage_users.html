@@ -1,0 +1,502 @@
+<!-- 
+=============================================================================
+MANAGE_USERS.HTML - GESTIÓN DE USUARIOS DEL SISTEMA
+=============================================================================
+
+PROPÓSITO:
+Template para administración de usuarios con control de acceso granular.
+Solo accesible por usuarios con rol 'admin', implementa CRUD de usuarios
+con medidas de seguridad avanzadas.
+
+CARACTERÍSTICAS PRINCIPALES:
+- Lista de usuarios existentes con roles diferenciados
+- Formulario de creación de nuevos usuarios
+- Sistema de protección anti-eliminación accidental
+- Validación de permisos basada en roles
+- Interfaz de grid responsive para desktop y móvil
+
+PATRONES JINJA2 AVANZADOS:
+- Condicionales complejas para seguridad
+- Loops con else para estados vacíos
+- Comparaciones de IDs de sesión
+- Badges dinámicos por roles
+- Formularios con acciones específicas
+
+SEGURIDAD IMPLEMENTADA:
+- Protección contra auto-eliminación
+- Prevención de eliminación entre admins
+- Confirmación JavaScript para acciones destructivas
+- Validación de permisos a nivel de template
+=============================================================================
+-->
+
+{% extends "layout.html" %}
+<!-- 
+HERENCIA DE LAYOUT BASE:
+Aprovecha toda la funcionalidad del layout.html:
+- Sistema de navegación con control de roles
+- Mensajes flash para feedback de operaciones
+- CSS base y JavaScript compartido
+- Header con información del usuario actual
+-->
+
+{% block title %}Gestionar Usuarios - Sistema de Inventario{% endblock %}
+<!-- 
+TÍTULO ESPECÍFICO:
+Identifica claramente la función administrativa.
+Útil para administradores que manejan múltiples pestañas.
+-->
+
+{% block head %}
+    <!-- 
+    CSS ESPECÍFICO PARA GESTIÓN DE USUARIOS:
+    Estilos dedicados para:
+    - Layout de grid para lista + formulario
+    - Badges de roles con colores diferenciados
+    - Tabla responsive para usuarios
+    - Formulario de creación estilizado
+    - Estados de protección visual (iconos de candado)
+    -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/manage_users.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- CONTENIDO PRINCIPAL DE GESTIÓN DE USUARIOS -->
+
+<div class="users-header">
+    <!-- 
+    HEADER DE LA SECCIÓN:
+    Título principal que identifica la funcionalidad.
+    Área para potenciales breadcrumbs o botones de acción global.
+    -->
+    <h2>Gestión de Usuarios</h2>
+</div>
+
+<div class="users-grid">
+    <!-- 
+    LAYOUT DE GRID RESPONSIVO:
+    Diseño de dos columnas para desktop:
+    - Izquierda: Lista de usuarios existentes
+    - Derecha: Formulario de creación + información
+    
+    En móviles se apila verticalmente para mejor usabilidad.
+    -->
+    
+    <!-- SECCIÓN IZQUIERDA: LISTA DE USUARIOS -->
+    <div class="users-list-section">
+        <h3>Usuarios Registrados</h3>
+        <!-- 
+        TÍTULO DE SECCIÓN:
+        Identifica claramente el contenido de esta área.
+        -->
+        
+        <div class="users-table-container">
+        <!-- 
+        CONTENEDOR CON SCROLL:
+        Permite scroll horizontal en móviles si la tabla es muy ancha.
+        Mantiene headers visibles durante scroll vertical.
+        -->
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Acciones</th>
+                    </tr>
+                    <!-- 
+                    HEADERS DE TABLA:
+                    - Usuario: Nombre de login del usuario
+                    - Rol: Badge visual con permisos
+                    - Acciones: Botones de eliminación (con restricciones)
+                    -->
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <!-- 
+                    LOOP POR TODOS LOS USUARIOS:
+                    Itera sobre la lista de usuarios proporcionada por Flask.
+                    Cada 'user' es un diccionario con keys: id, username, role
+                    -->
+                    <tr>
+                        <td>{{ user['username'] }}</td>
+                        <!-- 
+                        NOMBRE DE USUARIO:
+                        Acceso directo al diccionario user['username'].
+                        Muestra el nombre de login sin escapar caracteres especiales.
+                        -->
+                        
+                        <td>
+                            <span class="role-badge role-{{ user['role'] }}">
+                                {{ user['role'].title() }}
+                            </span>
+                            <!-- 
+                            BADGE DE ROL DINÁMICO:
+                            
+                            CLASES CSS GENERADAS:
+                            - "role-badge role-admin" para administradores
+                            - "role-badge role-editor" para editores
+                            - "role-badge role-viewer" para visualizadores
+                            
+                            TEXTO FORMATEADO:
+                            user['role'].title() convierte:
+                            - "admin" → "Admin"
+                            - "editor" → "Editor"
+                            - "viewer" → "Viewer"
+                            
+                            RESULTADO: Badges visualmente diferenciados por color según CSS.
+                            -->
+                        </td>
+                        
+                        <td>
+                            <!-- LÓGICA COMPLEJA DE ACCIONES CON SEGURIDAD -->
+                            {% if user['id'] == session.user_id %}
+                            <!-- 
+                            PROTECCIÓN CONTRA AUTO-ELIMINACIÓN:
+                            Compara ID del usuario en la fila con ID de sesión actual.
+                            Previene que usuarios se eliminen a sí mismos accidentalmente.
+                            -->
+                                <span class="current-user-text">Tu cuenta</span>
+                                <!-- 
+                                INDICADOR VISUAL:
+                                Texto plano que identifica la cuenta actual.
+                                Sin botones destructivos para prevenir auto-eliminación.
+                                -->
+                            {% elif user['role'] == 'admin' %}
+                            <!-- 
+                            PROTECCIÓN ENTRE ADMINISTRADORES:
+                            Otros admins no pueden eliminarse entre sí.
+                            Medida de seguridad contra escalada de privilegios maliciosa.
+                            -->
+                                <span class="protected-user-text" title="Los administradores no pueden eliminarse entre sí por seguridad">
+                                    🔒 Protegido
+                                </span>
+                                <!-- 
+                                TOOLTIP EXPLICATIVO:
+                                'title' muestra mensaje al hacer hover.
+                                Explica por qué no se puede eliminar este usuario.
+                                Icono de candado refuerza visualmente la protección.
+                                -->
+                            {% else %}
+                            <!-- 
+                            USUARIOS ELIMINABLES:
+                            Solo editores y viewers pueden ser eliminados por admins.
+                            Implementa el principio de menor privilegio.
+                            -->
+                                <a href="{{ url_for('delete_user', user_id=user['id']) }}" 
+                                   class="btn btn-danger delete-btn" 
+                                   onclick="return confirm('¿Estás seguro de eliminar este usuario?')">
+                                    Eliminar
+                                </a>
+                                <!-- 
+                                ENLACE DESTRUCTIVO CON PROTECCIONES:
+                                
+                                URL_FOR CON PARÁMETRO:
+                                Genera ruta como: /delete_user/123
+                                Pasa user_id específico para eliminación
+                                
+                                CLASES CSS:
+                                - btn: Estilo base de botón
+                                - btn-danger: Color rojo para acción destructiva
+                                - delete-btn: Estilos específicos de eliminación
+                                
+                                CONFIRMACIÓN JAVASCRIPT:
+                                onclick='return confirm(...)' muestra dialog nativo.
+                                Si usuario cancela, return false previene navegación.
+                                Solo si acepta, procede con DELETE request.
+                                -->
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <!-- 
+                    ELSE DE LOOP - ESTADO SIN USUARIOS:
+                    Se ejecuta cuando la lista 'users' está vacía.
+                    Escenario improbable pero importante para robustez.
+                    -->
+                    <tr>
+                        <td colspan="3" class="no-users-message">
+                            No hay usuarios registrados.
+                        </td>
+                        <!-- 
+                        COLSPAN="3":
+                        Expande la celda a través de las 3 columnas.
+                        Centra visualmente el mensaje de estado vacío.
+                        
+                        CLASE CSS ESPECÍFICA:
+                        'no-users-message' permite estilos especiales.
+                        Típicamente texto gris, cursiva, centrado.
+                        -->
+                    </tr>
+                    {% endfor %}
+                    <!-- 
+                    FIN DEL LOOP DE USUARIOS:
+                    Ha iterado por todos los usuarios disponibles.
+                    -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- SECCIÓN DERECHA: FORMULARIO DE CREACIÓN -->
+    <div class="create-user-section">
+        <h3>Crear Nuevo Usuario</h3>
+        <!-- 
+        TÍTULO DE SECCIÓN DERECHA:
+        Identifica la funcionalidad de creación de usuarios.
+        -->
+        
+        <div class="create-user-form">
+        <!-- 
+        CONTENEDOR DEL FORMULARIO:
+        Wrapper para estilos específicos del form de creación.
+        -->
+            <form method="POST" action="{{ url_for('create_user') }}">
+            <!-- 
+            FORMULARIO DE CREACIÓN CON ACTION ESPECÍFICA:
+            
+            METHOD="POST":
+            Envía datos de forma segura en el cuerpo de la petición.
+            
+            ACTION EXPLÍCITA:
+            url_for('create_user') dirige a endpoint específico.
+            Diferente del endpoint de la página actual (manage_users).
+            
+            RESULTADO: POST request va a /create_user en lugar de página actual.
+            -->
+                <div class="form-group">
+                    <label for="username">Nombre de Usuario:</label>
+                    <input type="text" id="username" name="username" required>
+                    <!-- 
+                    CAMPO NOMBRE DE USUARIO:
+                    - TYPE="text": Texto simple sin restricciones especiales
+                    - REQUIRED: Validación HTML5 obligatoria
+                    - NAME="username": Clave para request.form['username'] en Flask
+                    -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" name="password" required>
+                    <!-- 
+                    CAMPO CONTRASEÑA:
+                    - TYPE="password": Oculta caracteres visualmente
+                    - REQUIRED: Obligatorio para creación de cuenta
+                    - Sin restricciones de longitud en frontend (validar en backend)
+                    -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Rol:</label>
+                    <select id="role" name="role" required>
+                        <option value="">Seleccionar rol...</option>
+                        <!-- 
+                        OPCIÓN POR DEFECTO VACÍA:
+                        Fuerza al admin a seleccionar explícitamente un rol.
+                        Previene asignación accidental de permisos.
+                        -->
+                        <option value="admin">Administrador</option>
+                        <option value="editor">Editor</option>
+                        <option value="viewer">Visualizador</option>
+                        <!-- 
+                        OPCIONES DE ROLES:
+                        Values corresponden exactamente con roles en base de datos.
+                        Texto descriptivo para claridad del administrador.
+                        -->
+                    </select>
+                    <!-- 
+                    SELECT REQUERIDO:
+                    REQUIRED attribute obliga selección de rol válido.
+                    Opción vacía inicial hace que sea obligatorio elegir.
+                    -->
+                </div>
+                
+                <button type="submit" class="btn btn-success create-user-btn">
+                    Crear Usuario
+                </button>
+                <!-- 
+                BOTÓN DE ENVÍO:
+                - TYPE="submit": Envía formulario completo
+                - btn-success: Color verde para acción positiva
+                - create-user-btn: Clase específica para estilos adicionales
+                -->
+            </form>
+        </div>
+        
+        <!-- INFORMACIÓN DE ROLES Y SEGURIDAD -->
+        <div class="roles-info">
+            <h4>Roles disponibles:</h4>
+            <!-- 
+            DOCUMENTACIÓN DE ROLES:
+            Información esencial para administradores que crean usuarios.
+            Clarifica qué puede hacer cada tipo de usuario.
+            -->
+            <p><strong>Admin:</strong> Acceso completo al sistema</p>
+            <p><strong>Editor:</strong> Puede ver y editar productos</p>  
+            <p><strong>Viewer:</strong> Solo puede ver productos</p>
+            <!-- 
+            DESCRIPCIÓN DE PERMISOS:
+            - Admin: CRUD completo + gestión de usuarios
+            - Editor: CRUD de productos, sin gestión de usuarios
+            - Viewer: Solo lectura, no puede modificar nada
+            
+            PRINCIPIO DE MENOR PRIVILEGIO:
+            Cada rol tiene solo los permisos mínimos necesarios.
+            -->
+            
+            <div class="security-info">
+                <h4>🔒 Medidas de Seguridad:</h4>
+                <!-- 
+                SECCIÓN DE SEGURIDAD:
+                Informa al administrador sobre las protecciones implementadas.
+                Importante para transparencia y confianza en el sistema.
+                -->
+                <ul>
+                    <li>Los administradores no pueden eliminarse entre sí</li>
+                    <!-- 
+                    PROTECCIÓN ANTI-ESCALADA:
+                    Previene que un admin rogue elimine otros admins.
+                    Mantiene al menos un admin funcional en el sistema.
+                    -->
+                    <li>No puedes eliminar tu propia cuenta</li>
+                    <!-- 
+                    PROTECCIÓN ANTI-AUTO-ELIMINACIÓN:
+                    Previene que administradores se bloqueen accidentalmente.
+                    Requiere otro admin para eliminar cuentas de admin.
+                    -->
+                    <li>La sesión se cierra automáticamente al cerrar/actualizar la página</li>
+                    <!-- 
+                    SEGURIDAD DE SESIÓN:
+                    Informa sobre comportamiento de logout automático.
+                    Previene sesiones abiertas en equipos compartidos.
+                    -->
+                    <li>Logout automático silencioso después de 30 minutos de inactividad</li>
+                    <!-- 
+                    TIMEOUT DE SESIÓN:
+                    Política de expiración por inactividad.
+                    Balancea seguridad con experiencia de usuario.
+                    -->
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- 
+=============================================================================
+RESUMEN TÉCNICO - MANAGE_USERS.HTML:
+=============================================================================
+
+PROPÓSITO:
+Template administrativo para gestión completa de usuarios del sistema.
+Implementa CRUD de usuarios con medidas de seguridad avanzadas y control
+de acceso granular basado en roles.
+
+CARACTERÍSTICAS IMPLEMENTADAS:
+
+1. INTERFAZ DE GESTIÓN DUAL:
+   - Lista de usuarios existentes con información de roles
+   - Formulario de creación para nuevos usuarios
+   - Layout de grid responsive (desktop/móvil)
+   - Información contextual sobre permisos y seguridad
+
+2. SISTEMA DE SEGURIDAD MULTINIVEL:
+   - Protección contra auto-eliminación (session.user_id)
+   - Prevención de eliminación entre administradores
+   - Confirmación JavaScript para acciones destructivas
+   - Validación de roles en formulario de creación
+
+3. GESTIÓN DE ROLES AVANZADA:
+   - Badges visuales diferenciados por tipo de usuario
+   - Información clara de permisos para cada rol
+   - Principio de menor privilegio aplicado
+   - Documentación integrada de capacidades
+
+4. EXPERIENCIA DE USUARIO OPTIMIZADA:
+   - Estados visuales claros (protegido, cuenta actual)
+   - Tooltips explicativos para acciones restringidas
+   - Mensajes informativos sobre políticas de seguridad
+   - Formulario con validación requerida
+
+5. INTEGRACIÓN CON BACKEND:
+   - Formulario con action específica (create_user)
+   - Enlaces de eliminación con parámetros de usuario
+   - Aprovechamiento del sistema de mensajes flash
+   - Manejo seguro de datos de sesión
+
+PATRONES JINJA2 AVANZADOS UTILIZADOS:
+
+- CONDICIONALES COMPLEJAS DE SEGURIDAD:
+  if user['id'] == session.user_id (auto-protección)
+  elif user['role'] == 'admin' (protección entre admins)
+  else (usuarios eliminables)
+
+- LOOPS CON ELSE PARA ROBUSTEZ:
+  for user in users ... else (estado vacío)
+
+- BADGES DINÁMICOS CON CLASES CSS:
+  "role-badge role-" + user['role'] (estilos por rol)
+
+- MANIPULACIÓN DE STRINGS:
+  user['role'].title() (formateo de texto)
+
+- URL GENERATION CON PARÁMETROS:
+  url_for('delete_user', user_id=user['id'])
+
+FLUJO DE OPERACIONES:
+
+1. CARGA INICIAL:
+   - Template recibe lista de usuarios de Flask
+   - Renderiza tabla con información y controles
+   - Muestra formulario de creación vacío
+
+2. CREACIÓN DE USUARIO:
+   - Admin completa formulario (username, password, role)
+   - POST a create_user endpoint específico
+   - Validación backend y feedback via flash messages
+
+3. ELIMINACIÓN DE USUARIO:
+   - Click en botón eliminar (solo para usuarios válidos)
+   - Confirmación JavaScript obligatoria
+   - GET request a delete_user con user_id específico
+   - Recarga página con usuario removido
+
+MEDIDAS DE SEGURIDAD IMPLEMENTADAS:
+
+- VALIDACIÓN DE PERMISOS A NIVEL TEMPLATE:
+  Solo admins ven esta página (controlado en layout.html)
+
+- PROTECCIÓN CONTRA ESCALADA DE PRIVILEGIOS:
+  Admins no pueden eliminarse entre sí
+
+- PREVENCIÓN DE AUTO-LOCKOUT:
+  Usuarios no pueden eliminar su propia cuenta
+
+- CONFIRMACIÓN DE ACCIONES DESTRUCTIVAS:
+  JavaScript confirm() para eliminaciones
+
+- PRINCIPIO DE MENOR PRIVILEGIO:
+  Roles claramente definidos y diferenciados
+
+CASOS DE USO PRINCIPALES:
+- Onboarding de nuevos empleados al sistema
+- Gestión de permisos y roles de usuarios existentes
+- Offboarding seguro de usuarios que dejan la organización
+- Auditoría de usuarios activos y sus niveles de acceso
+- Mantenimiento de políticas de seguridad organizacional
+
+DEPENDENCIAS TÉCNICAS:
+- layout.html para estructura base y navegación
+- manage_users.css para estilos específicos
+- Sistema de roles Flask en backend
+- Base de datos de usuarios con hash de contraseñas
+- Sistema de sesiones Flask para autenticación
+- JavaScript nativo para confirmaciones
+
+CONSIDERACIONES DE ESCALABILIDAD:
+- Tabla puede requerir paginación con muchos usuarios
+- Filtros de búsqueda para organizaciones grandes
+- Bulk operations para gestión masiva de usuarios
+- Integración con sistemas externos de autenticación (LDAP/OAuth)
+=============================================================================
+-->

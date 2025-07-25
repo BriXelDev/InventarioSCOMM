@@ -1,0 +1,406 @@
+/* Estilos específicos para la página de dashboard */
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.last-update {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Tarjetas de estadísticas */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.stat-card-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-card h3 {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.stat-card p {
+    margin: 0.5rem 0 0 0;
+    opacity: 0.9;
+}
+
+.stat-icon {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+/* Gradientes específicos para cada tarjeta */
+.stat-card-products {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card-items {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-card-value {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-card-low-stock {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* Layout principal del contenido */
+.main-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Sección de productos con alerta */
+.alert-section {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.alert-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.alert-critical {
+    background: #dc3545;
+    color: white;
+}
+
+.alert-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.stock-critical {
+    font-weight: bold;
+    color: #dc3545;
+}
+
+.stock-warning {
+    font-weight: bold;
+    color: #ffc107;
+}
+
+.adjust-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    background: #17a2b8;
+    color: white;
+}
+
+.no-alerts {
+    padding: 2rem;
+    text-align: center;
+    color: #28a745;
+}
+
+.no-alerts-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.no-alerts p {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+/* Sección de actividad de usuarios */
+.activity-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.user-activity-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.user-activity-name {
+    font-weight: bold;
+}
+
+.user-activity-movements {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.user-activity-stats {
+    text-align: right;
+}
+
+.user-activity-quantity {
+    color: #007bff;
+    font-weight: bold;
+}
+
+.user-activity-units {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.no-activity {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+}
+
+.no-activity-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Sección de movimientos recientes */
+.movements-section {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.movement-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.movement-entrada {
+    background: #d4edda;
+    color: #155724;
+}
+
+.movement-salida {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.movement-creacion {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.movement-eliminacion {
+    background: #f5c6cb;
+    color: #721c24;
+}
+
+.quantity-positive {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.quantity-negative {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.quantity-neutral {
+    color: #6c757d;
+}
+
+.no-movements {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+}
+
+.no-movements-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Botones de acción flotantes */
+.floating-actions {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+}
+
+.floating-btn {
+    display: block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    text-decoration: none;
+    margin-bottom: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.floating-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Refresh Controls */
+.refresh-controls {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.refresh-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.btn-refresh-toggle,
+.btn-refresh-now {
+    background: none;
+    border: 1px solid #dee2e6;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background-color: white;
+}
+
+.btn-refresh-toggle:hover,
+.btn-refresh-now:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    transform: scale(1.1);
+}
+
+.btn-refresh-now:active {
+    transform: scale(0.95);
+}
+
+/* Enhanced stats cards animations */
+.stats-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* Loading states for quick actions */
+.quick-actions .btn {
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.quick-actions .btn:active {
+    transform: scale(0.95);
+}
+
+/* Spin animation for refresh button */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Enhanced page transitions */
+body {
+    transition: opacity 0.3s ease;
+}
+
+/* Status indicators for real-time data */
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #28a745;
+    margin-left: 0.5rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Enhanced last update styling */
+.last-update {
+    font-size: 0.85rem;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.last-update:before {
+    content: "🕒";
+    font-size: 0.9rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .activity-section {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-actions {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .refresh-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+}
